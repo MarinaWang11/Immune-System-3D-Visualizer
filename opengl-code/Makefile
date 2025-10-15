@@ -1,51 +1,66 @@
+# =========================================================================
+# Makefile Final para o Projeto OpenGL
+# =========================================================================
 EXE = 3dvis
+CXX = g++
 IMGUI_DIR = lib/imgui
-SOURCES = src/main.cpp src/glad.cpp 
-SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
-SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
+
+# --- Fontes do Projeto ---
+# Adicionamos o caminho correto para TODOS os arquivos .cpp
+SOURCES = src/main.cpp \
+          src/glad.cpp \
+          include/Sphere.cpp \
+          $(IMGUI_DIR)/imgui.cpp \
+          $(IMGUI_DIR)/imgui_demo.cpp \
+          $(IMGUI_DIR)/imgui_draw.cpp \
+          $(IMGUI_DIR)/imgui_tables.cpp \
+          $(IMGUI_DIR)/imgui_widgets.cpp \
+          $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp \
+          $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
+
+# --- Nomes dos Arquivos Objeto ---
+# Gera nomes como main.o, Sphere.o, imgui.o, etc.
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
-UNAME_S := $(shell uname -s)
-LINUX_GL_LIBS = -lglfw -lGL -lX11 -lXxf86vm -lXrandr -lpthread -lassimp -lXi -ldl -lXinerama -lXcursor
 
-CXX=g++
-CXXFLAGS = -std=c++11 -I./lib -I./$(IMGUI_DIR) -I./$(IMGUI_DIR)/backends -I./include/ 
-CXXFLAGS += -g -Wall -Wformat
-INCLUDE=-I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I./include/
-LIBS =
+# --- Flags de Compilação e Bibliotecas ---
+# Inclui todas as pastas necessárias (-I) e bibliotecas (-l)
+CXXFLAGS = -std=c++11 -g -Wall -Wformat
+CXXFLAGS += -I./include -I./lib -I./$(IMGUI_DIR) -I./$(IMGUI_DIR)/backends
+CXXFLAGS += `pkg-config --cflags glfw3`
 
-##---------------------------------------------------------------------
-## OPENGL ES
-##---------------------------------------------------------------------
+LIBS = -lglfw -lGL -lX11 -lXxf86vm -lXrandr -lpthread -lassimp -lXi -ldl -lXinerama -lXcursor
+LIBS += `pkg-config --static --libs glfw3`
 
-## This assumes a GL ES library available in the system, e.g. libGLESv2.so
-# CXXFLAGS += -DIMGUI_IMPL_OPENGL_ES2
-# LINUX_GL_LIBS = -lGLESv2
+# =========================================================================
+# Regras de Compilação (Build Rules)
+# ATENÇÃO: As linhas de comando abaixo devem começar com um TAB!
+# =========================================================================
 
-ifeq ($(UNAME_S), Linux) #LINUX
-	ECHO_MESSAGE = "Linux"
-	LIBS += $(LINUX_GL_LIBS) `pkg-config --static --libs glfw3`
-
-	CXXFLAGS += `pkg-config --cflags glfw3`
-	CFLAGS = $(CXXFLAGS)
-endif
-
-##---------------------------------------------------------------------
-## BUILD RULES
-##---------------------------------------------------------------------
-%.o:src/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-%.o:$(IMGUI_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-%.o:$(IMGUI_DIR)/backends/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
+# Regra principal: criar o executável final
 all: $(EXE)
-	@echo Build complete for $(ECHO_MESSAGE)
 
+# Regra para linkar todos os arquivos .o no executável
 $(EXE): $(OBJS)
-	$(CXX) $(INCLUDE) -o $@ $^ $(CXXFLAGS) $(LIBS)
+	$(CXX) -o $@ $^ $(LIBS)
 
+# --- Regras para compilar cada .cpp em um .o ---
+
+# Regra para arquivos na pasta src/ (main.cpp, glad.cpp)
+main.o glad.o: %.o: src/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Regra para arquivos na pasta include/ (Sphere.cpp)
+Sphere.o: %.o: include/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Regra para arquivos do ImGui
+imgui.o imgui_demo.o imgui_draw.o imgui_tables.o imgui_widgets.o: %.o: $(IMGUI_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Regra para arquivos de backend do ImGui
+imgui_impl_glfw.o imgui_impl_opengl3.o: %.o: $(IMGUI_DIR)/backends/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Regra para limpar o projeto
 clean:
 	rm -f $(EXE) $(OBJS)
