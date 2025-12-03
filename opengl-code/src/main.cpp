@@ -401,7 +401,7 @@ int main(){
 
     Shader cellShader("./shaders/planet.vs", "./shaders/planet.fs"); // Compila e linka o shader.
 
-    std::vector<CellData> cells = parseCSV("data/data.csv");
+    std::vector<CellData> cells = parseCSV("./data/data.csv");
 
     // Cria uma única instância da esfera que será usada para desenhar todas as células (instancing "manual")
     Sphere sphere(1.0f, 36, 18); // raio=1.0, 36 setores (boa resolução), 18 pilhas (meia resolução).
@@ -424,16 +424,46 @@ int main(){
 
         // Configura a luz direcional
         cellShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        cellShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);   // Cor ambiente fraca
-        cellShader.setVec3("dirLight.diffuse", 0.8f, 0.8f, 0.8f);   // Cor difusa principal
+        cellShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);   // Cor ambiente fraca
+        cellShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);   // Cor difusa principal
         cellShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f); // Cor especular
         
-        // Projeção (perspectiva): Define o frustum de visualização (a 'lente' da câmera).
+        // Configura a luz [0] como uma lanterna presa à câmera
+        cellShader.setVec3("spotLights[0].position", camera.Position);
+        cellShader.setVec3("spotLights[0].direction", camera.Front);
+        cellShader.setFloat("spotLights[0].cutOff", glm::cos(glm::radians(12.5f)));
+        cellShader.setFloat("spotLights[0].outerCutOff", glm::cos(glm::radians(17.5f)));
+        cellShader.setVec3("spotLights[0].ambient", 0.0f, 0.0f, 0.0f);
+        cellShader.setVec3("spotLights[0].diffuse", 1.0f, 1.0f, 1.0f); // Luz branca forte
+        cellShader.setVec3("spotLights[0].specular", 1.0f, 1.0f, 1.0f);
+        cellShader.setFloat("spotLights[0].constant", 1.0f);
+        cellShader.setFloat("spotLights[0].linear", 0.09f);
+        cellShader.setFloat("spotLights[0].quadratic", 0.032f);
+
+        // "Desliga" as outras luzes (1, 2 e 3) definindo cor preta
+        for(int i = 1; i < 4; i++) {
+            std::string number = std::to_string(i);
+            cellShader.setVec3("spotLights[" + number + "].position", glm::vec3(0.0f));
+            cellShader.setVec3("spotLights[" + number + "].direction", glm::vec3(0.0f, -1.0f, 0.0f));
+            cellShader.setFloat("spotLights[" + number + "].constant", 1.0f);
+            cellShader.setFloat("spotLights[" + number + "].linear", 0.09f);
+            cellShader.setFloat("spotLights[" + number + "].quadratic", 0.032f);
+            cellShader.setVec3("spotLights[" + number + "].ambient", 0.0f, 0.0f, 0.0f);
+            cellShader.setVec3("spotLights[" + number + "].diffuse", 0.0f, 0.0f, 0.0f); // Desligada
+            cellShader.setVec3("spotLights[" + number + "].specular", 0.0f, 0.0f, 0.0f);
+            cellShader.setFloat("spotLights[" + number + "].cutOff", glm::cos(glm::radians(12.5f)));
+            cellShader.setFloat("spotLights[" + number + "].outerCutOff", glm::cos(glm::radians(17.5f)));
+        }
+
+        // Projeção (perspectiva): Define o frustum de visualização 
         glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         // View (Visualização): Move o 'mundo' inversamente à câmera.
         glm::mat4 view = camera.GetViewMatrix();
         cellShader.setMat4("projection", projection);
         cellShader.setMat4("view", view);
+
+        // Variável de tempo para animação
+        float time = (float)glfwGetTime();
 
         for (const auto& cell : cells) {
             // Ignora células do tipo "Empty" 
@@ -450,11 +480,21 @@ int main(){
                 cellShader.setVec3("objectColor", 0.5f, 0.5f, 0.5f); // Cinza (default)
             }
 
-            // Matriz do modelo (Model Matrix): Translação e Escala.
+            // Matriz do modelo (Model Matrix): Translação e Escala
             glm::mat4 model = glm::mat4(1.0f);
-            // 1. Translação: Move a esfera para a posição x, y, z lida do CSV.
+
+            // 1. Orbita: Rotaciona o mundo inteiro em torno do eixo Y (0,1,0)
+            // Isso faz as células "orbitarem" o centro (0,0,0)
+            float orbitSpeed = 0.5f; 
+            model = glm::rotate(model, time * orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            // 2. Translação: Move a esfera para a posição x, y, z
             model = glm::translate(model, cell.position);
-            // 2. Escala: Reduz o tamanho da esfera (de raio 1.0 para raio 0.4).
+
+            // 3. Rotação no próprio eixo
+            model = glm::rotate(model, time, glm::vec3(0.1f, 1.0f, 0.0f));
+
+            // 4. Escala: Reduz o tamanho da esfera 
             model = glm::scale(model, glm::vec3(0.4f)); 
             cellShader.setMat4("model", model);
             
