@@ -288,13 +288,23 @@
 //         // } 
 //         // ImGui::EndChild();
 //         // ImGui::End();
-// */
+// 
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h> 
 
 #include <glm/glm.hpp>             
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtc/type_ptr.hpp>         
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h> 
+#include <ctime> 
+#include <sys/stat.h> 
 
 #include "../include/shader.h" 
 #include "../include/camera.h"
@@ -306,74 +316,95 @@
 #include <fstream>  
 #include <sstream> 
 
-
 struct CellData {
     glm::vec3 position; 
     std::string type;  
     std::string state;  
 };
 
-// Função para ler o arquivo CSV e retornar um vetor de CellData
+// Função para ler o arquivo CSV
 std::vector<CellData> parseCSV(const std::string& filename) {
     std::vector<CellData> data;
     std::ifstream file(filename); 
     std::string line;
-
 
     if (!file.is_open()) {
         std::cerr << "ERRO: Nao foi possivel abrir o arquivo CSV: " << filename << std::endl;
         return data;
     }
 
-
-    std::getline(file, line);
+    std::getline(file, line); // Pula cabeçalho
 
     while (std::getline(file, line)) {
         std::stringstream ss(line); 
         std::string value;
         CellData cell;
 
-        // posição (x, y, z)
-        std::getline(ss, value, ',');
-        cell.position.x = std::stof(value); // Converte string para float.
-        std::getline(ss, value, ',');
-        cell.position.y = std::stof(value);
-        std::getline(ss, value, ',');
-        cell.position.z = std::stof(value);
-
-        // tipo
-        std::getline(ss, value, ',');
-        cell.type = value;
-
-        // estado
-        std::getline(ss, value, ',');
-        cell.state = value;
+        std::getline(ss, value, ','); cell.position.x = std::stof(value);
+        std::getline(ss, value, ','); cell.position.y = std::stof(value);
+        std::getline(ss, value, ','); cell.position.z = std::stof(value);
+        std::getline(ss, value, ','); cell.type = value;
+        std::getline(ss, value, ','); cell.state = value;
 
         data.push_back(cell);
     }
-
     file.close();
     return data;
 }
 
+// Função auxiliar para tirar Snapshot
+void saveSnapshot(GLFWwindow* window) {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    // 3 canais (RGB)
+    GLsizei nrChannels = 3;
+    GLsizei stride = nrChannels * width;
+    stride += (stride % 4) ? (4 - stride % 4) : 0;
+    
+    GLsizei bufferSize = stride * height;
+    std::vector<char> buffer(bufferSize);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+
+    stbi_flip_vertically_on_write(true);
+
+    struct stat st = {0};
+    if (stat("print", &st) == -1) {
+        mkdir("print", 0777);
+    }
+
+    std::time_t now = std::time(nullptr);
+    std::string filename = "print/snapshot_" + std::to_string(now) + ".png";
+
+    if (stbi_write_png(filename.c_str(), width, height, nrChannels, buffer.data(), stride)) {
+        std::cout << "Snapshot salvo com sucesso: " << filename << std::endl;
+    } else {
+        std::cerr << "Erro ao salvar snapshot!" << std::endl;
+    }
+}
 
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 // Câmera
-// Posição inicial da câmera ajustada para visualizar as esferas
-Camera camera(glm::vec3(5.0f, 5.0f, 15.0f)); // Instancia a câmera.
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
+glm::vec3 initialPos(5.0f, 5.0f, 15.0f);
+Camera camera(initialPos); 
 
-// Timing (controle de tempo para movimento independente da taxa de quadros)
-float deltaTime = 0.0f; // Tempo entre o quadro atual e o último quadro.
+// Variáveis de Controle de Estado
+bool isCameraMode = false; 
+float animationTime = 0.0f; 
+bool requestSnapshot = false; 
+
+// Timing
+float deltaTime = 0.0f; 
 float lastFrame = 0.0f;
 
-void framebufferSizeCallback(GLFWwindow* window, int width, int height); // Redimensionamento da viewport.
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset); // Zoom da câmera.
-void processInput(GLFWwindow * window); // Processamento de entrada do teclado.
+// Callbacks
+void framebufferSizeCallback(GLFWwindow* window, int width, int height); 
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset); 
+void processInput(GLFWwindow * window); 
 
 int main(){
     glfwInit();
@@ -381,7 +412,7 @@ int main(){
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Visualizador de Células", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Visualizador de Celulas", NULL, NULL);
     if (window == NULL) {
         std::cerr << "Falha ao criar a janela GLFW" << std::endl;
         glfwTerminate();
@@ -397,130 +428,197 @@ int main(){
         return -1;
     }
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark(); 
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
     glEnable(GL_DEPTH_TEST); 
 
-    Shader cellShader("./shaders/planet.vs", "./shaders/planet.fs"); // Compila e linka o shader.
-
+    Shader cellShader("./shaders/planet.vs", "./shaders/planet.fs"); 
     std::vector<CellData> cells = parseCSV("./data/data.csv");
-
-    // Cria uma única instância da esfera que será usada para desenhar todas as células (instancing "manual")
-    Sphere sphere(1.0f, 36, 18); // raio=1.0, 36 setores (boa resolução), 18 pilhas (meia resolução).
+    Sphere sphere(1.0f, 24, 12, false); 
 
     while(!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        if (!isCameraMode) {
+            animationTime += deltaTime;
+        }
+
         processInput(window);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); 
+        glClearColor(0.9f, 0.9f, 0.95f, 1.0f); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::MenuItem("Salvar Snapshot (PNG)", NULL)) {
+                requestSnapshot = true;
+            }
+            ImGui::EndMainMenuBar();
+        }
 
         cellShader.use();
 
-        // Configurações de iluminação e câmera
-        cellShader.setVec3("viewPos", camera.Position); // Posição da câmera 
-        cellShader.setFloat("shininess", 32.0f); // Brilho do material
+        cellShader.setVec3("viewPos", camera.Position); 
+        cellShader.setFloat("shininess", 32.0f); 
 
-        // Configura a luz direcional
         cellShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        cellShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);   // Cor ambiente fraca
-        cellShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);   // Cor difusa principal
-        cellShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f); // Cor especular
-        
-        // Configura a luz [0] como uma lanterna presa à câmera
+        cellShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);   
+        cellShader.setVec3("dirLight.diffuse", 0.6f, 0.6f, 0.6f);     
+        cellShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+
+        // Configuração da Lanterna (Spotlight)
         cellShader.setVec3("spotLights[0].position", camera.Position);
         cellShader.setVec3("spotLights[0].direction", camera.Front);
-        cellShader.setFloat("spotLights[0].cutOff", glm::cos(glm::radians(12.5f)));
-        cellShader.setFloat("spotLights[0].outerCutOff", glm::cos(glm::radians(17.5f)));
+        cellShader.setFloat("spotLights[0].cutOff", glm::cos(glm::radians(20.5f)));
+        cellShader.setFloat("spotLights[0].outerCutOff", glm::cos(glm::radians(25.5f)));
         cellShader.setVec3("spotLights[0].ambient", 0.0f, 0.0f, 0.0f);
-        cellShader.setVec3("spotLights[0].diffuse", 1.0f, 1.0f, 1.0f); // Luz branca forte
+        cellShader.setVec3("spotLights[0].diffuse", 1.0f, 1.0f, 1.0f); 
         cellShader.setVec3("spotLights[0].specular", 1.0f, 1.0f, 1.0f);
         cellShader.setFloat("spotLights[0].constant", 1.0f);
         cellShader.setFloat("spotLights[0].linear", 0.09f);
         cellShader.setFloat("spotLights[0].quadratic", 0.032f);
 
-        // "Desliga" as outras luzes (1, 2 e 3) definindo cor preta
         for(int i = 1; i < 4; i++) {
             std::string number = std::to_string(i);
-            cellShader.setVec3("spotLights[" + number + "].position", glm::vec3(0.0f));
-            cellShader.setVec3("spotLights[" + number + "].direction", glm::vec3(0.0f, -1.0f, 0.0f));
-            cellShader.setFloat("spotLights[" + number + "].constant", 1.0f);
-            cellShader.setFloat("spotLights[" + number + "].linear", 0.09f);
-            cellShader.setFloat("spotLights[" + number + "].quadratic", 0.032f);
-            cellShader.setVec3("spotLights[" + number + "].ambient", 0.0f, 0.0f, 0.0f);
-            cellShader.setVec3("spotLights[" + number + "].diffuse", 0.0f, 0.0f, 0.0f); // Desligada
+            cellShader.setVec3("spotLights[" + number + "].diffuse", 0.0f, 0.0f, 0.0f);
             cellShader.setVec3("spotLights[" + number + "].specular", 0.0f, 0.0f, 0.0f);
-            cellShader.setFloat("spotLights[" + number + "].cutOff", glm::cos(glm::radians(12.5f)));
-            cellShader.setFloat("spotLights[" + number + "].outerCutOff", glm::cos(glm::radians(17.5f)));
+            cellShader.setFloat("spotLights[" + number + "].constant", 1.0f);
+            cellShader.setFloat("spotLights[" + number + "].linear", 0.1f);
+            cellShader.setFloat("spotLights[" + number + "].quadratic", 0.01f);
+            cellShader.setFloat("spotLights[" + number + "].cutOff", 0.0f);
+            cellShader.setFloat("spotLights[" + number + "].outerCutOff", 0.0f);
         }
 
-        // Projeção (perspectiva): Define o frustum de visualização 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        // View (Visualização): Move o 'mundo' inversamente à câmera.
+        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
         glm::mat4 view = camera.GetViewMatrix();
         cellShader.setMat4("projection", projection);
         cellShader.setMat4("view", view);
 
-        // Variável de tempo para animação
-        float time = (float)glfwGetTime();
-
         for (const auto& cell : cells) {
-            // Ignora células do tipo "Empty" 
-            if (cell.type == "Empty") {
-                continue;
-            }
+            if (cell.type == "Empty") continue;
 
-            // Define a cor baseada no tipo da célula (Uniform "objectColor")
             if (cell.type == "Bacteria") {
-                cellShader.setVec3("objectColor", 1.0f, 0.0f, 0.0f); // Vermelho
+                cellShader.setVec3("objectColor", 1.0f, 0.0f, 0.0f); 
             } else if (cell.type == "Neutrophil") {
-                cellShader.setVec3("objectColor", 0.0f, 0.0f, 1.0f); // Azul
+                cellShader.setVec3("objectColor", 0.0f, 0.0f, 1.0f); 
             } else {
-                cellShader.setVec3("objectColor", 0.5f, 0.5f, 0.5f); // Cinza (default)
+                cellShader.setVec3("objectColor", 0.5f, 0.5f, 0.5f); 
             }
 
-            // Matriz do modelo (Model Matrix): Translação e Escala
             glm::mat4 model = glm::mat4(1.0f);
-
-            // 1. Orbita: Rotaciona o mundo inteiro em torno do eixo Y (0,1,0)
-            // Isso faz as células "orbitarem" o centro (0,0,0)
             float orbitSpeed = 0.5f; 
-            model = glm::rotate(model, time * orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
-            // 2. Translação: Move a esfera para a posição x, y, z
+            model = glm::rotate(model, animationTime * orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::translate(model, cell.position);
-
-            // 3. Rotação no próprio eixo
-            model = glm::rotate(model, time, glm::vec3(0.1f, 1.0f, 0.0f));
-
-            // 4. Escala: Reduz o tamanho da esfera 
+            model = glm::rotate(model, animationTime, glm::vec3(0.1f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(0.4f)); 
             cellShader.setMat4("model", model);
-            
             sphere.draw();
+        }
+
+  
+        ImGui::SetNextWindowPos(ImVec2(10, 30)); 
+        ImGui::SetNextWindowBgAlpha(0.35f); 
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        
+        if (ImGui::Begin("Legenda", NULL, window_flags)) {
+            ImGui::Text("Legenda:");
+            ImGui::Separator();
+            
+            ImGui::ColorButton("##bac", ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
+            ImGui::SameLine();
+            ImGui::Text("Bacteria");
+
+            ImGui::ColorButton("##neu", ImVec4(0.0f, 0.0f, 1.0f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
+            ImGui::SameLine();
+            ImGui::Text("Neutrophil");
+
+            ImGui::ColorButton("##out", ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
+            ImGui::SameLine();
+            ImGui::Text("Outros");
+
+            ImGui::Separator();
+            ImGui::Text("Controles:");
+            ImGui::Text("[C] - Modo Camera (Livre)");
+            ImGui::Text("      WASD: Mover | Setas: Olhar");
+            ImGui::Text("[O] - Modo Orbita (Animacao)");
+            ImGui::Text("[R] - Resetar Camera");
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if (requestSnapshot) {
+            saveSnapshot(window);
+            requestSnapshot = false;
         }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glfwTerminate();
     return 0;
 }
 
-
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true); 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.Move(Camera_Movement::FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.Move(Camera_Movement::BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.Move(Camera_Movement::LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.Move(Camera_Movement::RIGHT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && !isCameraMode) {
+        isCameraMode = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS && isCameraMode) {
+        isCameraMode = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        camera.Position = initialPos;
+        camera.Yaw = -90.0f;
+        camera.Pitch = 0.0f;
+        camera.updateCameraVectors();
+    }
+
+    if (isCameraMode) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            camera.Move(Camera_Movement::FORWARD, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            camera.Move(Camera_Movement::BACKWARD, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            camera.Move(Camera_Movement::LEFT, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            camera.Move(Camera_Movement::RIGHT, deltaTime);
+
+        float rotSpeed = 40.0f * deltaTime; 
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+            camera.Yaw += rotSpeed;
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+            camera.Yaw -= rotSpeed;
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+            camera.Pitch += rotSpeed;
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+            camera.Pitch -= rotSpeed;
+
+        if (camera.Pitch > 89.0f) camera.Pitch = 89.0f;
+        if (camera.Pitch < -89.0f) camera.Pitch = -89.0f;
+
+        camera.updateCameraVectors();
+    }
 }
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
