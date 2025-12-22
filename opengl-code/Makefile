@@ -1,12 +1,8 @@
-# =========================================================================
-# Makefile Final para o Projeto OpenGL
-# =========================================================================
 EXE = 3dvis
 CXX = g++
 IMGUI_DIR = lib/imgui
 
-# --- Fontes do Projeto ---
-# Adicionamos o caminho correto para TODOS os arquivos .cpp
+# Fontes do Projeto
 SOURCES = src/main.cpp \
           src/glad.cpp \
           include/Sphere.cpp \
@@ -18,12 +14,10 @@ SOURCES = src/main.cpp \
           $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp \
           $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
 
-# --- Nomes dos Arquivos Objeto ---
-# Gera nomes como main.o, Sphere.o, imgui.o, etc.
+# Nomes dos Arquivos Objeto
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 
-# --- Flags de Compilação e Bibliotecas ---
-# Inclui todas as pastas necessárias (-I) e bibliotecas (-l)
+# Flags de Compilação e Bibliotecas
 CXXFLAGS = -std=c++11 -g -Wall -Wformat
 CXXFLAGS += -I./include -I./lib -I./$(IMGUI_DIR) -I./$(IMGUI_DIR)/backends
 CXXFLAGS += `pkg-config --cflags glfw3`
@@ -31,10 +25,7 @@ CXXFLAGS += `pkg-config --cflags glfw3`
 LIBS = -lglfw -lGL -lX11 -lXxf86vm -lXrandr -lpthread -lassimp -lXi -ldl -lXinerama -lXcursor
 LIBS += `pkg-config --static --libs glfw3`
 
-# =========================================================================
 # Regras de Compilação (Build Rules)
-# ATENÇÃO: As linhas de comando abaixo devem começar com um TAB!
-# =========================================================================
 
 # Regra principal: criar o executável final
 all: $(EXE)
@@ -43,7 +34,6 @@ all: $(EXE)
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $^ $(LIBS)
 
-# --- Regras para compilar cada .cpp em um .o ---
 
 # Regra para arquivos na pasta src/ (main.cpp, glad.cpp)
 main.o glad.o: %.o: src/%.cpp

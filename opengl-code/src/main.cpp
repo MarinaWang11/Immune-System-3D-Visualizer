@@ -1,295 +1,3 @@
-// #include "../lib/glad/glad.h"
-// #include <GLFW/glfw3.h>
-
-// // #include "../lib/glm/glm.hpp"
-// // #include "../lib/glm/gtc/matrix_transform.hpp"
-// // #include "../lib/glm/gtc/type_ptr.hpp"
-
-// #include "../include/shader.h"
-// #include "../include/camera.h"
-// #include "../include/skybox.h"
-// #include "../include/model.h"
-
-// #include <cstdio>
-// #include <imgui.h>
-// #include <imgui_impl_glfw.h>
-// #include <imgui_impl_opengl3.h>
-
-// #include <iostream>
-// #include <string>
-
-
-// //global constants 
-// using Skybox = Learus_Skybox::Skybox;
-// bool animation = false;
-
-// // Timing
-// float lastFrame = 0.0f;
-// float frameToggled = 0.0f;
-// float timeSinceLastToggle = 1.0f;
-
-// // Some settings
-// const unsigned int SCR_WIDTH = 1280;
-// const unsigned int SCR_HEIGHT = 720;
-
-// float earthOrbitRadius = 15.0f;
-// glm::vec3 centerPos = glm::vec3(0.0f, 0.0f, 0.0f);
-// glm::vec3 earthPos = centerPos + glm::vec3(sin(frameToggled) * earthOrbitRadius, 0.0f, cos(frameToggled) * earthOrbitRadius);
-
-// // Camera
-// glm::vec3 ref_cam_pos = glm::vec3(0.0f, 0.0f, 20.0f);
-// glm::vec3 initial_cam_pos = glm::vec3(0.0f, 0.0f, 20.0f);
-// Camera camera(initial_cam_pos);
-// float cameraOrbitRadius = 15.0f;
-// float rotateAngle = 1.f;
-
-// // Mouse Input
-// float lastX = SCR_WIDTH / 2.0f;
-// float lastY = SCR_HEIGHT / 2.0f;
-// bool firstMouse = true;
-
-// const char* glsl_version = "#version 130";
-
-// glm::vec3 pointLightPositions[] = {
-// 	glm::vec3( 0.7f,  0.2f,  2.0f),
-// 	glm::vec3( 2.3f, -3.3f, -4.0f),
-// 	glm::vec3(-4.0f,  2.0f, -12.0f),
-// 	glm::vec3( 0.0f,  0.0f, -3.0f)
-// }; 
-
-// void framebufferSizeCallback(GLFWwindow* window, int width, int height);
-// void mouseInput(GLFWwindow * window, double xpos, double ypos);
-// void scrollInput(GLFWwindow * window, double xoffset, double yoffset);
-// void keyboardInput(GLFWwindow * window, float deltaTime);
-
-// void reset_cam_pos(){
-//     camera.Position = ref_cam_pos;
-//     camera.Yaw = -90;
-//     camera.Pitch = 0.0;
-//     camera.updateCameraVectors(); 
-// }
-
-// void render_main_menu_bar(){
-
-//     if (ImGui::BeginMainMenuBar()){
-//         if (ImGui::BeginMenu("Actions")) {
-//             if (ImGui::MenuItem("Reset camera position")){
-//                 reset_cam_pos();  
-//             }
-//             ImGui::EndMenu();
-//         }
-//         ImGui::EndMainMenuBar();
-//     }
-// }
-
-// void framebufferSizeCallback(GLFWwindow* window, int width, int height){
-//     // make sure the viewport matches the new window dimensions; note that width and 
-//     // height will be significantly larger than specified on retina displays.
-//     glViewport(0, 0, width, height);
-// }
-
-// // Handles user keyboard input. Supposed to be used every frame, so deltaTime can be calculated appropriately.
-// void keyboardInput(GLFWwindow * window, float deltaTime){
-//     // Exit
-//     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-//         glfwSetWindowShouldClose(window, true);    
-
-//     if (glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::FORWARD, deltaTime);
-
-//     if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::BACKWARD, deltaTime);
-
-//     if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::LEFT, deltaTime);
-
-//     if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::RIGHT, deltaTime);
-
-//     if (glfwGetKey(window,GLFW_KEY_U) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::UP, deltaTime);
-
-//     if (glfwGetKey(window,GLFW_KEY_I) == GLFW_PRESS)
-//         camera.Move(Camera_Movement::DOWN, deltaTime);
-
-//     // Upwards Rotation
-//     if (GLFW_MOD_CONTROL && glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
-//         camera.Orbit(UP, cameraOrbitRadius, rotateAngle);
-
-//     // Downwards Rotation
-//     if (GLFW_MOD_CONTROL && glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-//         camera.Orbit(DOWN, cameraOrbitRadius, rotateAngle);
-
-//     // Rightwards Rotation
-//     if (GLFW_MOD_CONTROL && glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-//         camera.Orbit(RIGHT, cameraOrbitRadius, rotateAngle);
-
-//     // Leftwards Rotation
-//     if (GLFW_MOD_CONTROL && glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-//         camera.Orbit(LEFT, cameraOrbitRadius, rotateAngle);
-
-//     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-//         reset_cam_pos();
-//     }
-
-//     std::cout << "cam pos: " << camera.Position.x << "," << camera.Position.y << "," << camera.Position.z << std::endl;
-//     std::cout << "cam front vector: " << camera.Front.x << "," << camera.Front.y << "," << camera.Front.z << std::endl;  
-//     std::cout << "earth pos: " << earthPos.x << "," << earthPos.y << "," << earthPos.z << std::endl;  
-// }
-
-// // Handles mouse scroll wheel. Supposed to be used as the glfw scroll callback.
-// void scrollInput(GLFWwindow* window, double xoffset, double yoffset){
-//     camera.Zoom(yoffset);
-// }
-
-// //skyBox.setUniforms(projection, glm::mat4(glm::mat3(view)));
-// //skyBox.Draw();
-
-// int main(){
-//     // Initialize and configure GLFW
-//     glfwInit();
-//     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-//     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-//     GLFWwindow * window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Solar System", NULL, NULL);
-//     if (window == NULL){
-//         std::cerr << "ERROR: Failed to create GLFW window" << std::endl;
-//         glfwTerminate();
-//         return -1;
-//     }        
-
-//     glfwMakeContextCurrent(window);
-//     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-//     glfwSetScrollCallback(window, scrollInput);
-
-//     // Load glad
-//     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-//         std::cout << "Failed to initialize GLAD" << std::endl;
-//         return -1;
-//     }
-
-//     glEnable(GL_DEPTH_TEST);
-
-//     //initialize imgui context
-//     IMGUI_CHECKVERSION();
-//     ImGui::CreateContext();
-//     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable
-//                                 | ImGuiConfigFlags_NavEnableKeyboard
-//                                 | ImGuiConfigFlags_NavEnableSetMousePos;
-    
-//     ImGui_ImplGlfw_InitForOpenGL(window, true);
-//     ImGui_ImplOpenGL3_Init("#version 330");
-
-//     //load vertex and fragment shaders 
-//     Shader planetShader("./shaders/planet.vs", "./shaders/planet.fs");    
-//     // Load the models
-//     Model Earth("./models/immune_system/Globe.obj");
-    
-//     Skybox skyBox("./images/top.png", "./images/bottom.png", "./images/left.png", "./images/right.png", "./images/front.png", "./images/back.png");
-
-//     // Render Loop
-//     while(!glfwWindowShouldClose(window)) {                        
-//         float currentFrame = glfwGetTime();
-//         float deltaTime = currentFrame - lastFrame;
-//         lastFrame = currentFrame;
-
-//         timeSinceLastToggle += deltaTime;
-//         if (animation)
-//             frameToggled += deltaTime;
-
-//         keyboardInput(window, deltaTime);
-
-//         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-//         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        
-
-//         //imgui + opengl integration (frame initialization)
-//         ImGui_ImplOpenGL3_NewFrame();
-//         ImGui_ImplGlfw_NewFrame();
-//         ImGui::NewFrame();        
-        
-//         //draw main menu bar 
-//         render_main_menu_bar(); 
-        
-//         // view / projection
-//         glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
-//         glm::mat4 view = camera.GetViewMatrix();
-//         glm::mat4 model = glm::mat4(1.0f);
-
-//         planetShader.use();
-
-//         // Set the lighting
-//         planetShader.setVec3("viewPos", camera.Position);
-//         planetShader.setFloat("material.shininess", 32.0f);
-
-//         planetShader.setVec3("dirLight.position", camera.Position);
-//         planetShader.setVec3("dirLight.ambient", 1.f, 1.f, 1.f);
-//         planetShader.setVec3("dirLight.diffuse", 1.5f, 1.5f, 1.5f);
-//         planetShader.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
-        
-//         std::string uniform_name = "pointLights[";
-//         for (int i = 0; i < 4; i++) {
-//             uniform_name += std::to_string(i) + "]";
-//             std::string pos_name = uniform_name + ".position";
-//             planetShader.setVec3(pos_name, pointLightPositions[i]);
-//             planetShader.setVec3(uniform_name + ".ambient", 1.f, 1.f, 1.f);
-//             planetShader.setVec3(uniform_name + ".diffuse", 1.f, 1.f, 1.f);
-//             planetShader.setVec3(uniform_name + ".specular", 1.f, 1.f, 1.f);
-//             planetShader.setFloat(uniform_name + ".constant", 1.0f);
-//             planetShader.setFloat(uniform_name + ".linear", 0.045f);
-//             planetShader.setFloat(uniform_name + ".quadratic", 0.0075f);
-//         }
-        
-//         // Render the Earth object
-//         planetShader.setMat4("projection", projection);
-//         planetShader.setMat4("view", view);
-//         model = glm::mat4(1.0f);
-//         model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
-
-//         // Orbit around the sun
-//         earthPos = centerPos + glm::vec3(sin(frameToggled) * earthOrbitRadius, 0.0f, cos(frameToggled) * earthOrbitRadius);
-//         model = glm::translate(model, earthPos);
-//         // Rotate around itself
-//         model = glm::rotate(model, frameToggled * 1.5f * glm::radians(-50.0f), glm::vec3(0.1f, 1.0f, 0.0f));
-
-//         planetShader.setMat4("model", model);
-//         Earth.Draw(planetShader);         
-
-//         ImGui::SetNextWindowSize(ImVec2(300, 300));
-//         ImGui::SetNextWindowPos(ImVec2(0, 20));
-        
-//         ImGui::Render();
-//         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());            
-            
-//         glfwSwapBuffers(window);
-//         glfwPollEvents();
-//     }
-
-//     ImGui_ImplOpenGL3_Shutdown();
-//     ImGui_ImplGlfw_Shutdown();
-//     ImGui::DestroyContext();
-//     glfwDestroyWindow(window);
-//     glfwTerminate();
-//     return 0;
-// }
-
-// /*
-//         // ImGui::Begin("Scene", &show_dialog);
-//         // //{
-//         // ImGui::BeginChild("toolbar", {0.0f, 30.0f});
-//         //     //ImGui::BeginChildFrame(ImGui::GetID("toolbar"), ImVec2(300, 300)); 
-//         // {
-//         //     if (ImGui::Button("Add Component")) {
-//         //         std::cout << "to do" << std::endl;
-//         //     }
-//         //     ImGui::SameLine();
-//         //        // ImGui::EndChildFrame();                
-//         //     //}            
-//         // } 
-//         // ImGui::EndChild();
-//         // ImGui::End();
-// 
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h> 
 
@@ -304,327 +12,598 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h> 
 #include <ctime> 
-#include <sys/stat.h> 
+#include <sys/stat.h>
+#include <algorithm>
+#include <limits> 
+#include <set>
+#include <map>
+
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#include <sys/stat.h>
+#define MKDIR(path) mkdir(path, 0777)
+#endif
 
 #include "../include/shader.h" 
 #include "../include/camera.h"
 #include "../include/Sphere.h"
+#include "../include/Colors.h" 
 
-#include <iostream>
-#include <string>
-#include <vector>
-#include <fstream>  
-#include <sstream> 
-
-struct CellData {
+struct CellData{
     glm::vec3 position; 
     std::string type;  
     std::string state;  
 };
 
-// Função para ler o arquivo CSV
-std::vector<CellData> parseCSV(const std::string& filename) {
-    std::vector<CellData> data;
+//  VARIÁVEIS GLOBAIS 
+int selectedCellIndex = -1; 
+bool mousePressedLastFrame = false; 
+
+bool isCameraMode = true; 
+float animationTime = 0.0f; 
+bool requestSnapshot = false; 
+bool showGrid = true;
+bool showDataTable = true; 
+
+//  CONTROLE DE LINHA DO TEMPO 
+int currentSimStep = 0;
+const int MAX_SIM_STEPS = 10; 
+
+const float UI_PANEL_WIDTH = 300.0f;
+const float DETAILS_PANEL_HEIGHT = 160.0f;
+
+std::map<std::string, std::set<std::string>> activeAgents;
+std::vector<CellData> cells;
+
+std::string getSimFilename(int step){
+    return "./data/field_" + std::to_string(step) + ".csv";
+}
+
+void parseCSV(const std::string& filename){
+    cells.clear();
+    activeAgents.clear();
+    selectedCellIndex = -1; 
+
     std::ifstream file(filename); 
     std::string line;
 
-    if (!file.is_open()) {
-        std::cerr << "ERRO: Nao foi possivel abrir o arquivo CSV: " << filename << std::endl;
-        return data;
+    if(!file.is_open()){
+        std::cerr << "ERRO: Nao foi possivel abrir " << filename << std::endl;
+        return;
     }
-
-    std::getline(file, line); // Pula cabeçalho
-
-    while (std::getline(file, line)) {
+    
+    std::getline(file, line); 
+    while (std::getline(file, line)){
         std::stringstream ss(line); 
         std::string value;
         CellData cell;
 
-        std::getline(ss, value, ','); cell.position.x = std::stof(value);
+        if(!(std::getline(ss, value, ','))) break;
+
+        cell.position.x = std::stof(value);
+
         std::getline(ss, value, ','); cell.position.y = std::stof(value);
         std::getline(ss, value, ','); cell.position.z = std::stof(value);
         std::getline(ss, value, ','); cell.type = value;
         std::getline(ss, value, ','); cell.state = value;
-
-        data.push_back(cell);
+        
+        if(cell.type != "Empty"){
+            cells.push_back(cell);
+            activeAgents[cell.type].insert(cell.state);
+        }
     }
     file.close();
-    return data;
 }
 
-// Função auxiliar para tirar Snapshot
-void saveSnapshot(GLFWwindow* window) {
+// Função para salvar PNG
+void saveSnapshot(GLFWwindow* window){
     int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
 
-    // 3 canais (RGB)
+    glfwGetFramebufferSize(window, &width, &height);
+    
     GLsizei nrChannels = 3;
     GLsizei stride = nrChannels * width;
     stride += (stride % 4) ? (4 - stride % 4) : 0;
-    
     GLsizei bufferSize = stride * height;
-    std::vector<char> buffer(bufferSize);
 
+    std::vector<char> buffer(bufferSize);
+    
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
-
     stbi_flip_vertically_on_write(true);
-
-    struct stat st = {0};
-    if (stat("print", &st) == -1) {
-        mkdir("print", 0777);
-    }
-
+    
+    struct stat st ={0};
+    if(stat("print", &st) == -1) MKDIR("print");
+    
     std::time_t now = std::time(nullptr);
     std::string filename = "print/snapshot_" + std::to_string(now) + ".png";
 
-    if (stbi_write_png(filename.c_str(), width, height, nrChannels, buffer.data(), stride)) {
-        std::cout << "Snapshot salvo com sucesso: " << filename << std::endl;
-    } else {
-        std::cerr << "Erro ao salvar snapshot!" << std::endl;
+    if(stbi_write_png(filename.c_str(), width, height, nrChannels, buffer.data(), stride)){
+        std::cout << "Snapshot salvo: " << filename << std::endl;
     }
+}
+
+ImVec2 worldToScreen(glm::vec3 pos, glm::mat4 view, glm::mat4 projection, int width, int height, float xOffset){
+    glm::vec4 clipSpace = projection * view * glm::vec4(pos, 1.0f);
+
+    if(clipSpace.w <= 0.0f) return ImVec2(-10000, -10000); 
+
+    glm::vec3 ndcSpace = glm::vec3(clipSpace) / clipSpace.w;
+
+    float renderWidth = (float)width - xOffset;
+    float x = ((ndcSpace.x + 1.0f) / 2.0f) * renderWidth + xOffset;
+    float y = ((1.0f - ndcSpace.y) / 2.0f) * height; 
+
+    return ImVec2(x, y);
+}
+
+bool raySphereIntersect(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 sphereCenter, float sphereRadius, float& distance){
+    glm::vec3 oc = rayOrigin - sphereCenter;
+
+    float b = glm::dot(oc, rayDir);
+    float c = glm::dot(oc, oc) - sphereRadius * sphereRadius;
+    float delta = b * b - c;
+
+    if(delta < 0.0f) return false;
+
+    float sqrtDelta = sqrt(delta);
+    float t = -b - sqrtDelta; 
+
+    if(t < 0.0f) t = -b + sqrtDelta; 
+    if(t < 0.0f) return false; 
+
+    distance = t;
+
+    return true;
+}
+
+glm::vec3 getRayFromMouse(float mouseX, float mouseY, int screenW, int screenH, glm::mat4 projection, glm::mat4 view, float xOffset){
+    float renderWidth = (float)screenW - xOffset;
+    float x = (2.0f * (mouseX - xOffset)) / renderWidth - 1.0f;
+    float y = 1.0f - (2.0f * mouseY) / (float)screenH; 
+
+    glm::vec4 ray_clip = glm::vec4(x, y, -1.0f, 1.0f);
+    glm::vec4 ray_eye = glm::inverse(projection) * ray_clip;
+
+    ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0f, 0.0f);
+
+    glm::vec3 ray_wor = glm::vec3(glm::inverse(view) * ray_eye);
+
+    return glm::normalize(ray_wor);
+}
+
+unsigned int gridVAO, gridVBO;
+int gridVertexCount = 0;
+
+void setupGridAndAxes(){
+    std::vector<float> v;
+    int size = 15;
+
+    for(int i = 0; i <= size; ++i){
+        v.insert(v.end(),{ (float)i, 0.0f, 0.0f,  0,0,0, 0,0 }); v.insert(v.end(),{ (float)i, (float)size, 0.0f,  0,0,0, 0,0 });
+        v.insert(v.end(),{ 0.0f, (float)i, 0.0f,  0,0,0, 0,0 }); v.insert(v.end(),{ (float)size, (float)i, 0.0f,  0,0,0, 0,0 });
+        v.insert(v.end(),{ (float)i, 0.0f, 0.0f,  0,0,0, 0,0 }); v.insert(v.end(),{ (float)i, 0.0f, (float)size,  0,0,0, 0,0 });
+        v.insert(v.end(),{ 0.0f, 0.0f, (float)i,  0,0,0, 0,0 }); v.insert(v.end(),{ (float)size, 0.0f, (float)i,  0,0,0, 0,0 });
+    }
+
+    v.insert(v.end(),{ 0.0f, 0.0f, 0.0f, 0,0,0, 0,0 }); v.insert(v.end(),{ 17.0f, 0.0f, 0.0f, 0,0,0, 0,0 }); 
+    v.insert(v.end(),{ 0.0f, 0.0f, 0.0f, 0,0,0, 0,0 }); v.insert(v.end(),{ 0.0f, 17.0f, 0.0f, 0,0,0, 0,0 }); 
+    v.insert(v.end(),{ 0.0f, 0.0f, 0.0f, 0,0,0, 0,0 }); v.insert(v.end(),{ 0.0f, 0.0f, 17.0f, 0,0,0, 0,0 }); 
+
+    gridVertexCount = v.size() / 8;
+
+    glGenVertexArrays(1, &gridVAO); glGenBuffers(1, &gridVBO);
+    glBindVertexArray(gridVAO); glBindBuffer(GL_ARRAY_BUFFER, gridVBO);
+    glBufferData(GL_ARRAY_BUFFER, v.size() * sizeof(float), v.data(), GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2); glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 }
 
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
-// Câmera
-glm::vec3 initialPos(5.0f, 5.0f, 15.0f);
+glm::vec3 initialPos(32.0f, 28.0f, 32.0f);
+
 Camera camera(initialPos); 
 
-// Variáveis de Controle de Estado
-bool isCameraMode = false; 
-float animationTime = 0.0f; 
-bool requestSnapshot = false; 
-
-// Timing
 float deltaTime = 0.0f; 
 float lastFrame = 0.0f;
 
-// Callbacks
-void framebufferSizeCallback(GLFWwindow* window, int width, int height); 
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset); 
+void framebufferSizeCallback(GLFWwindow* window, int width, int height){ glViewport(0, 0, width, height); }
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset){
+    if(ImGui::GetIO().WantCaptureMouse) return; 
+
+    camera.Zoom(static_cast<float>(yoffset)); 
+}
+
 void processInput(GLFWwindow * window); 
 
 int main(){
-    glfwInit();
+    if(!glfwInit()) return -1;
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Visualizador de Celulas", NULL, NULL);
-    if (window == NULL) {
-        std::cerr << "Falha ao criar a janela GLFW" << std::endl;
-        glfwTerminate();
-        return -1;
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Visualizador Celular 3D - Linha do Tempo", NULL, NULL);
+
+    if(!window){ 
+        glfwTerminate(); 
+        return -1; 
     }
+
     glfwMakeContextCurrent(window);
-    
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetScrollCallback(window, scrollCallback);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Falha ao inicializar o GLAD" << std::endl;
-        return -1;
-    }
+    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark(); 
+    ImGui::StyleColorsLight();
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
+    camera.Yaw = -135.0f; camera.Pitch = -30.0f; camera.updateCameraVectors();
     glEnable(GL_DEPTH_TEST); 
-
     Shader cellShader("./shaders/planet.vs", "./shaders/planet.fs"); 
-    std::vector<CellData> cells = parseCSV("./data/data.csv");
+    
+    parseCSV(getSimFilename(currentSimStep));
+    
     Sphere sphere(1.0f, 24, 12, false); 
+    setupGridAndAxes();
 
-    while(!glfwWindowShouldClose(window)) {
-        float currentFrame = static_cast<float>(glfwGetTime());
+    while(!glfwWindowShouldClose(window)){
+        float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        if (!isCameraMode) {
-            animationTime += deltaTime;
-        }
-
+        if(!isCameraMode) animationTime += deltaTime;
         processInput(window);
 
-        glClearColor(0.9f, 0.9f, 0.95f, 1.0f); 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        int sw, sh; glfwGetWindowSize(window, &sw, &sh);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        bool mousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+        if(mousePressed && !mousePressedLastFrame && !io.WantCaptureMouse){
+            double mx, my; glfwGetCursorPos(window, &mx, &my);
 
-        if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::MenuItem("Salvar Snapshot (PNG)", NULL)) {
-                requestSnapshot = true;
+            if(mx > UI_PANEL_WIDTH + 15){ 
+                glm::mat4 proj = glm::perspective(glm::radians(camera.zoom), (float)(sw - UI_PANEL_WIDTH - 15) / (float)sh, 0.1f, 1000.0f);
+                glm::mat4 view = camera.GetViewMatrix();
+                glm::vec3 rO = camera.Position;
+                glm::vec3 rD = getRayFromMouse((float)mx, (float)my, sw, sh, proj, view, UI_PANEL_WIDTH + 15);
+
+                float minD = std::numeric_limits<float>::max();
+                int hitIdx = -1;
+
+                for(size_t i = 0; i < cells.size(); ++i){
+                    glm::mat4 m = glm::rotate(glm::mat4(1.0f), animationTime * 0.5f, glm::vec3(0, 1, 0));
+                    m = glm::translate(m, cells[i].position);
+                    glm::vec3 pos = glm::vec3(m[3]);
+                    float d;
+
+                    if(raySphereIntersect(rO, rD, pos, 0.4f, d)){ 
+                        if(d < minD){ 
+                            minD = d; hitIdx = (int)i;
+                        } 
+                    }
+                }
+
+                if(hitIdx != -1){
+                    selectedCellIndex = (selectedCellIndex == hitIdx) ? -1 : hitIdx;
+                } else {
+                    selectedCellIndex = -1;
+                }
             }
-            ImGui::EndMainMenuBar();
         }
+        mousePressedLastFrame = mousePressed;
 
+        glClearColor(0.95f, 0.95f, 0.95f, 1.0f); 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame();
+
+        //  RENDERIZAÇÃO 3D 
+        glViewport((int)UI_PANEL_WIDTH + 15, 0, sw - (int)UI_PANEL_WIDTH - 15, sh);
         cellShader.use();
-
         cellShader.setVec3("viewPos", camera.Position); 
         cellShader.setFloat("shininess", 32.0f); 
+        
+        SceneLighting light = getGlobalLighting();
+        cellShader.setVec3("dirLight.direction", light.direction);
+        cellShader.setVec3("dirLight.ambient", light.ambient);   
+        cellShader.setVec3("dirLight.diffuse", light.diffuse);     
+        cellShader.setVec3("dirLight.specular", light.specular);
 
-        cellShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        cellShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);   
-        cellShader.setVec3("dirLight.diffuse", 0.6f, 0.6f, 0.6f);     
-        cellShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
-
-        // Configuração da Lanterna (Spotlight)
-        cellShader.setVec3("spotLights[0].position", camera.Position);
-        cellShader.setVec3("spotLights[0].direction", camera.Front);
-        cellShader.setFloat("spotLights[0].cutOff", glm::cos(glm::radians(20.5f)));
-        cellShader.setFloat("spotLights[0].outerCutOff", glm::cos(glm::radians(25.5f)));
-        cellShader.setVec3("spotLights[0].ambient", 0.0f, 0.0f, 0.0f);
-        cellShader.setVec3("spotLights[0].diffuse", 1.0f, 1.0f, 1.0f); 
-        cellShader.setVec3("spotLights[0].specular", 1.0f, 1.0f, 1.0f);
-        cellShader.setFloat("spotLights[0].constant", 1.0f);
-        cellShader.setFloat("spotLights[0].linear", 0.09f);
-        cellShader.setFloat("spotLights[0].quadratic", 0.032f);
-
-        for(int i = 1; i < 4; i++) {
-            std::string number = std::to_string(i);
-            cellShader.setVec3("spotLights[" + number + "].diffuse", 0.0f, 0.0f, 0.0f);
-            cellShader.setVec3("spotLights[" + number + "].specular", 0.0f, 0.0f, 0.0f);
-            cellShader.setFloat("spotLights[" + number + "].constant", 1.0f);
-            cellShader.setFloat("spotLights[" + number + "].linear", 0.1f);
-            cellShader.setFloat("spotLights[" + number + "].quadratic", 0.01f);
-            cellShader.setFloat("spotLights[" + number + "].cutOff", 0.0f);
-            cellShader.setFloat("spotLights[" + number + "].outerCutOff", 0.0f);
+        for(int i = 0; i < 4; i++){
+             std::string n = "spotLights[" + std::to_string(i) + "]";
+             cellShader.setVec3(n + ".ambient", 0.1f, 0.1f, 0.1f);
+             cellShader.setVec3(n + ".diffuse", 0.0f, 0.0f, 0.0f);
+             cellShader.setFloat(n + ".constant", 1.0f);
+             cellShader.setFloat(n + ".linear", 0.09f);
+             cellShader.setFloat(n + ".quadratic", 0.032f);
         }
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+        glm::mat4 proj = glm::perspective(glm::radians(camera.zoom), (float)(sw - UI_PANEL_WIDTH - 15) / (float)sh, 0.1f, 1000.0f);
         glm::mat4 view = camera.GetViewMatrix();
-        cellShader.setMat4("projection", projection);
-        cellShader.setMat4("view", view);
+        cellShader.setMat4("projection", proj); cellShader.setMat4("view", view);
 
-        for (const auto& cell : cells) {
-            if (cell.type == "Empty") continue;
+        if(showGrid){
+            cellShader.setMat4("model", glm::mat4(1.0f)); glBindVertexArray(gridVAO);
+            cellShader.setVec3("dirLight.ambient", 1,1,1); cellShader.setVec3("dirLight.diffuse", 0,0,0);
+            
+            glLineWidth(1.0f); 
+            cellShader.setVec3("objectColor", 1.0f, 0.0f, 0.0f); glDrawArrays(GL_LINES, gridVertexCount - 6, 2); 
+            cellShader.setVec3("objectColor", 0.0f, 1.0f, 0.0f); glDrawArrays(GL_LINES, gridVertexCount - 4, 2); 
+            cellShader.setVec3("objectColor", 0.0f, 0.0f, 1.0f); glDrawArrays(GL_LINES, gridVertexCount - 2, 2); 
+            cellShader.setVec3("objectColor", 0.6f, 0.6f, 0.6f); glDrawArrays(GL_LINES, 0, gridVertexCount - 6); 
+            glLineWidth(1.0f); 
+            
+            cellShader.setVec3("dirLight.ambient", light.ambient); cellShader.setVec3("dirLight.diffuse", light.diffuse); 
+        }
 
-            if (cell.type == "Bacteria") {
-                cellShader.setVec3("objectColor", 1.0f, 0.0f, 0.0f); 
-            } else if (cell.type == "Neutrophil") {
-                cellShader.setVec3("objectColor", 0.0f, 0.0f, 1.0f); 
-            } else {
-                cellShader.setVec3("objectColor", 0.5f, 0.5f, 0.5f); 
-            }
+        for(size_t i = 0; i < cells.size(); ++i){
+            glm::vec3 color = getCellColor(cells[i].type, cells[i].state);
+            if((int)i == selectedCellIndex) color = glm::vec3(1.0f, 1.0f, 0.0f); 
+            
+            cellShader.setVec3("objectColor", color);
 
-            glm::mat4 model = glm::mat4(1.0f);
-            float orbitSpeed = 0.5f; 
-            model = glm::rotate(model, animationTime * orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::translate(model, cell.position);
-            model = glm::rotate(model, animationTime, glm::vec3(0.1f, 1.0f, 0.0f));
-            model = glm::scale(model, glm::vec3(0.4f)); 
-            cellShader.setMat4("model", model);
+            glm::mat4 m = glm::rotate(glm::mat4(1.0f), animationTime * 0.5f, glm::vec3(0, 1, 0));
+            m = glm::translate(m, cells[i].position);
+            m = glm::scale(m, glm::vec3(0.4f)); 
+
+            cellShader.setMat4("model", m); 
             sphere.draw();
         }
 
-  
-        ImGui::SetNextWindowPos(ImVec2(10, 30)); 
-        ImGui::SetNextWindowBgAlpha(0.35f); 
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        glViewport(0, 0, sw, sh);
+
+        if(ImGui::BeginMainMenuBar()){
+            if(ImGui::BeginMenu("Arquivo")){
+                if(ImGui::MenuItem("Snapshot PNG")) requestSnapshot = true;
+                ImGui::EndMenu();
+            }
+
+            if(ImGui::BeginMenu("Visualizar")){
+                ImGui::MenuItem("Grade", NULL, &showGrid);
+                ImGui::MenuItem("Tabela", NULL, &showDataTable);
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMainMenuBar();
+        }
+
+        //  INTERFACE LATERAL ESQUERDA 
+        static std::string selectedTypeForPopup = "";
         
-        if (ImGui::Begin("Legenda", NULL, window_flags)) {
-            ImGui::Text("Legenda:");
+        ImGui::SetNextWindowPos(ImVec2(10, 40)); 
+        ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, 0));
+        ImGui::Begin("Legenda e Controles", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
+            
+            ImGui::Text("Simulacao:");
             ImGui::Separator();
             
-            ImGui::ColorButton("##bac", ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
+            ImGui::Text("Passo: %d / %d", currentSimStep, MAX_SIM_STEPS - 1);
+            if(ImGui::Button("-", ImVec2(40, 0))){ if(currentSimStep > 0){ currentSimStep--; parseCSV(getSimFilename(currentSimStep)); } }
             ImGui::SameLine();
-            ImGui::Text("Bacteria");
-
-            ImGui::ColorButton("##neu", ImVec4(0.0f, 0.0f, 1.0f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
-            ImGui::SameLine();
-            ImGui::Text("Neutrophil");
-
-            ImGui::ColorButton("##out", ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
-            ImGui::SameLine();
-            ImGui::Text("Outros");
-
+            if(ImGui::Button("+", ImVec2(40, 0))){ if(currentSimStep < MAX_SIM_STEPS - 1){ currentSimStep++; parseCSV(getSimFilename(currentSimStep)); } }
+            
             ImGui::Separator();
-            ImGui::Text("Controles:");
-            ImGui::Text("[C] - Modo Camera (Livre)");
-            ImGui::Text("      WASD: Mover | Setas: Olhar");
-            ImGui::Text("[O] - Modo Orbita (Animacao)");
-            ImGui::Text("[R] - Resetar Camera");
-        }
+            ImGui::Text("Agentes:");
+            
+            for(std::map<std::string, std::set<std::string>>::iterator it = activeAgents.begin(); it != activeAgents.end(); ++it){
+                const std::string& type = it->first;
+                glm::vec3 bCol = getCellColor(type, "Live");
+                
+                ImGui::PushID(type.c_str());
+                ImGui::ColorButton("##color", ImVec4(bCol.r, bCol.g, bCol.b, 1.0f));
+                ImGui::SameLine();
+                if(ImGui::Selectable(type.c_str(), selectedTypeForPopup == type)){ 
+                    selectedTypeForPopup = (selectedTypeForPopup == type) ? "" : type; 
+                }
+                ImGui::PopID();
+            }
+            
+            ImGui::Separator();
+            ImGui::ColorButton("##sel_main", ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); ImGui::SameLine(); ImGui::Text("Selecionado");
+            
+            ImGui::Separator();
+            ImGui::TextDisabled("Atalhos:");
+            ImGui::Text("[O] Orbita | [C] Cam Livre");
+            ImGui::Text("[W,A,S,D] Mover | [Setas] Visao");
+            ImGui::Text("[-][+] Tempo");
+            
+            ImVec2 mainWinPos = ImGui::GetWindowPos(); ImVec2 mainWinSize = ImGui::GetWindowSize();
         ImGui::End();
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        //  SUB-LEGENDA DE ESTADOS 
+        if(!selectedTypeForPopup.empty() && activeAgents.count(selectedTypeForPopup)){
+            bool openStates = true;
+            ImGui::SetNextWindowPos(ImVec2(mainWinPos.x + mainWinSize.x + 10, mainWinPos.y), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(260, 0), ImGuiCond_Always);
+            
+            std::string subTitle = "Estados do Agente##StatesSubWindow";
+            if(ImGui::Begin(subTitle.c_str(), &openStates, ImGuiWindowFlags_AlwaysAutoResize)){
+                ImGui::Text("Tipo: %s", selectedTypeForPopup.c_str());
+                ImGui::Separator();
+                
+                std::set<std::string>& states = activeAgents[selectedTypeForPopup];
+                for(std::set<std::string>::iterator sit = states.begin(); sit != states.end(); ++sit){
+                    glm::vec3 sCol = getCellColor(selectedTypeForPopup, *sit);
 
-        if (requestSnapshot) {
-            saveSnapshot(window);
-            requestSnapshot = false;
+                    ImGui::PushID(sit->c_str());
+                    ImGui::ColorButton("##s_color", ImVec4(sCol.r, sCol.g, sCol.b, 1.0f));
+                    ImGui::SameLine(); 
+                    ImGui::Text("%s", sit->c_str());
+                    ImGui::PopID();
+                }
+            }
+            ImGui::End();
+            if(!openStates) selectedTypeForPopup = "";
         }
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        //  TABELA DE DADOS 
+        if(showDataTable){
+            float tY = mainWinPos.y + mainWinSize.y + 10;
+            float tH = (float)sh - tY - DETAILS_PANEL_HEIGHT - 30.0f;
+            
+            ImGui::SetNextWindowPos(ImVec2(10, tY));
+            ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, tH));
+
+            if(ImGui::Begin("Tabela de Dados", &showDataTable, ImGuiWindowFlags_NoResize)){
+                if(ImGui::BeginTable("t1", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)){
+                    ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 35.0f); 
+                    ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthStretch); 
+                    ImGui::TableSetupColumn("Y", ImGuiTableColumnFlags_WidthStretch); 
+                    ImGui::TableSetupColumn("Tipo", ImGuiTableColumnFlags_WidthStretch); 
+                    ImGui::TableSetupColumn("Est", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+
+                    for(size_t i = 0; i < cells.size(); i++){
+                        ImGui::TableNextRow();
+
+                        bool sel = (selectedCellIndex == (int)i);
+
+                        if(sel) ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 255, 0, 100));
+                       
+                        ImGui::TableSetColumnIndex(0);
+
+                        if(ImGui::Selectable(std::to_string(i).c_str(), sel, ImGuiSelectableFlags_SpanAllColumns)){
+                            selectedCellIndex = (selectedCellIndex == (int)i) ? -1 : (int)i; 
+                        }
+
+                        ImGui::TableSetColumnIndex(1); ImGui::Text("%.1f", cells[i].position.x);
+                        ImGui::TableSetColumnIndex(2); ImGui::Text("%.1f", cells[i].position.y);
+                        ImGui::TableSetColumnIndex(3); ImGui::Text("%s", cells[i].type.substr(0,4).c_str());
+                        ImGui::TableSetColumnIndex(4); ImGui::Text("%s", cells[i].state.substr(0,4).c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            ImGui::End();
+        }
+
+        //  PAINEL DE DETALHES 
+        bool showDetails = true;
+        ImGui::SetNextWindowPos(ImVec2(10, (float)sh - DETAILS_PANEL_HEIGHT - 10), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, DETAILS_PANEL_HEIGHT));
+
+        if(ImGui::Begin("Detalhes da Celula", &showDetails, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
+            if(selectedCellIndex != -1 && selectedCellIndex < (int)cells.size()){
+                auto& c = cells[selectedCellIndex];
+
+                ImGui::Text("ID #%d", selectedCellIndex); ImGui::Separator();
+                ImGui::BulletText("Tipo: %s", c.type.c_str());
+                ImGui::BulletText("Estado: %s", c.state.c_str());
+                ImGui::BulletText("Posicao: (%.2f, %.2f, %.2f)", c.position.x, c.position.y, c.position.z);
+                ImGui::Spacing();
+
+                if(ImGui::Button("Deselecionar", ImVec2(-FLT_MIN, 0))) selectedCellIndex = -1;
+            } else{
+                ImGui::TextDisabled("Selecione uma esfera ou linha.");
+            }
+        }
+
+        ImGui::End();
+
+        if(!showDetails) selectedCellIndex = -1;
+
+        // Labels de Eixo
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        ImVec2 pX = worldToScreen(glm::vec3(17.5f, 0.0f, 0.0f), view, proj, sw, sh, UI_PANEL_WIDTH + 15);
+        if(pX.x > -1000) dl->AddText(pX, IM_COL32(255, 0, 0, 255), "X");
+        ImVec2 pY = worldToScreen(glm::vec3(0.0f, 17.5f, 0.0f), view, proj, sw, sh, UI_PANEL_WIDTH + 15);
+        if(pY.x > -1000) dl->AddText(pY, IM_COL32(0, 180, 0, 255), "Y");
+        ImVec2 pZ = worldToScreen(glm::vec3(0.0f, 0.0f, 17.5f), view, proj, sw, sh, UI_PANEL_WIDTH + 15);
+        if(pZ.x > -1000) dl->AddText(pZ, IM_COL32(0, 0, 255, 255), "Z");
+
+        ImGui::Render(); ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if(requestSnapshot){ 
+            saveSnapshot(window); 
+            requestSnapshot = false; 
+        }
+
+        glfwSwapBuffers(window); glfwPollEvents();
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown(); 
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }
 
-void processInput(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true); 
+void processInput(GLFWwindow *window){
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true); 
+    
+    static bool plusPressed = false;
+    static bool minusPressed = false;
 
-    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && !isCameraMode) {
-        isCameraMode = true;
+    if(glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS){
+        if(!plusPressed){
+            if(currentSimStep < MAX_SIM_STEPS - 1){
+                currentSimStep++; 
+                parseCSV(getSimFilename(currentSimStep)); 
+            }
+
+            plusPressed = true;
+        }
+
+    } else { 
+        plusPressed = false;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS && isCameraMode) {
-        isCameraMode = false;
+    if(glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS){
+        if(!minusPressed){
+            if(currentSimStep > 0){ currentSimStep--; 
+                parseCSV(getSimFilename(currentSimStep)); 
+            }
+
+            minusPressed = true;
+        }
+    } else {
+        minusPressed = false; 
     }
 
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        camera.Position = initialPos;
-        camera.Yaw = -90.0f;
-        camera.Pitch = 0.0f;
+    if(glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) isCameraMode = true;
+
+    if(glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) isCameraMode = false;
+
+    if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+        camera.Position = initialPos; 
+        camera.Yaw = -135.0f; 
+        camera.Pitch = -30.0f; 
         camera.updateCameraVectors();
     }
 
-    if (isCameraMode) {
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            camera.Move(Camera_Movement::FORWARD, deltaTime);
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            camera.Move(Camera_Movement::BACKWARD, deltaTime);
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            camera.Move(Camera_Movement::LEFT, deltaTime);
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            camera.Move(Camera_Movement::RIGHT, deltaTime);
+    if(isCameraMode){
+        if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.Move(Camera_Movement::FORWARD, deltaTime);
+        if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.Move(Camera_Movement::BACKWARD, deltaTime);
+        if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.Move(Camera_Movement::LEFT, deltaTime);
+        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.Move(Camera_Movement::RIGHT, deltaTime);
 
-        float rotSpeed = 40.0f * deltaTime; 
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-            camera.Yaw += rotSpeed;
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-            camera.Yaw -= rotSpeed;
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-            camera.Pitch += rotSpeed;
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-            camera.Pitch -= rotSpeed;
+        float rs = 45.0f * deltaTime; 
 
-        if (camera.Pitch > 89.0f) camera.Pitch = 89.0f;
-        if (camera.Pitch < -89.0f) camera.Pitch = -89.0f;
+        if(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) camera.Yaw += rs;
+        if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) camera.Yaw -= rs;
+        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) camera.Pitch += rs;
+        if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) camera.Pitch -= rs;
 
+        if(camera.Pitch > 89.0f) camera.Pitch = 89.0f;
+        if(camera.Pitch < -89.0f) camera.Pitch = -89.0f;
+        
         camera.updateCameraVectors();
     }
-}
-
-void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    camera.Zoom(static_cast<float>(yoffset));
 }
