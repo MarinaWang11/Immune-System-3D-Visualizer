@@ -49,7 +49,7 @@ bool showDataTable = true;
 
 //  CONTROLE DE LINHA DO TEMPO 
 int currentSimStep = 0;
-const int MAX_SIM_STEPS = 10; 
+const int MAX_SIM_STEPS = 15; 
 
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
@@ -257,7 +257,7 @@ int main(){
     
     parseCSV(getSimFilename(currentSimStep));
     
-    Sphere sphere(1.0f, 24, 12, false); 
+    Sphere sphere(0.5f, 24, 18, true); 
     setupGridAndAxes();
 
     while(!glfwWindowShouldClose(window)){
@@ -457,13 +457,14 @@ int main(){
             ImGui::SetNextWindowPos(ImVec2(10, tY));
             ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, tH));
 
-            if(ImGui::Begin("Tabela de Dados", &showDataTable, ImGuiWindowFlags_NoResize)){
-                if(ImGui::BeginTable("t1", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)){
+            if(ImGui::Begin("Data Table", &showDataTable, ImGuiWindowFlags_NoResize)){
+                if(ImGui::BeginTable("t1", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)){
                     ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 35.0f); 
                     ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthStretch); 
                     ImGui::TableSetupColumn("Y", ImGuiTableColumnFlags_WidthStretch); 
-                    ImGui::TableSetupColumn("Tipo", ImGuiTableColumnFlags_WidthStretch); 
-                    ImGui::TableSetupColumn("Est", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Z", ImGuiTableColumnFlags_WidthStretch); 
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch); 
+                    ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableHeadersRow();
 
                     for(size_t i = 0; i < cells.size(); i++){
@@ -481,8 +482,9 @@ int main(){
 
                         ImGui::TableSetColumnIndex(1); ImGui::Text("%.1f", cells[i].position.x);
                         ImGui::TableSetColumnIndex(2); ImGui::Text("%.1f", cells[i].position.y);
-                        ImGui::TableSetColumnIndex(3); ImGui::Text("%s", cells[i].type.substr(0,4).c_str());
-                        ImGui::TableSetColumnIndex(4); ImGui::Text("%s", cells[i].state.substr(0,4).c_str());
+                        ImGui::TableSetColumnIndex(3); ImGui::Text("%.1f", cells[i].position.z);
+                        ImGui::TableSetColumnIndex(4); ImGui::Text("%s", cells[i].type.substr(0,4).c_str());
+                        ImGui::TableSetColumnIndex(5); ImGui::Text("%s", cells[i].state.substr(0,4).c_str());
                     }
 
                     ImGui::EndTable();
