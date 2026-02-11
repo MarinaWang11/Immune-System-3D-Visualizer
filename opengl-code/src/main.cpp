@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <ImGuiFileDialog.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h> 
@@ -17,6 +18,9 @@
 #include <limits> 
 #include <set>
 #include <map>
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #ifdef _WIN32
 #include <direct.h>
@@ -37,7 +41,9 @@ struct CellData{
     std::string state;  
 };
 
-//  VARIÁVEIS GLOBAIS 
+// VARIÁVEIS GLOBAIS 
+std::string currentSimFolder = "data";
+std::string detectedPrefix = "field_"; // Valor padrão inicial
 int selectedCellIndex = -1; 
 bool mousePressedLastFrame = false; 
 
@@ -47,9 +53,12 @@ bool requestSnapshot = false;
 bool showGrid = true;
 bool showDataTable = true; 
 
-//  CONTROLE DE LINHA DO TEMPO 
+// VARIÁVEIS DE ANIMAÇÃO 
+bool isPlaying = false;          // Estado: Toca ou Pausa
+float timeAccumulator = 0.0f;    // Acumula o tempo passado
+float stepDelay = 0.2f;          // Tempo entre passos (0.2s = 5 passos por segundo)
 int currentSimStep = 0;
-const int MAX_SIM_STEPS = 15; 
+int maxSimStepsFound = 0; 
 
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
@@ -57,9 +66,24 @@ const float DETAILS_PANEL_HEIGHT = 160.0f;
 std::map<std::string, std::set<std::string>> activeAgents;
 std::vector<CellData> cells;
 
+
+
 std::string getSimFilename(int step){
-    return "./data/field_" + std::to_string(step) + ".csv";
+    fs::path p = fs::path(currentSimFolder) / (detectedPrefix + std::to_string(step) + ".csv");
+    
+    return p.string();
 }
+
+std::string getSimFilenamePadded(int step, int width){
+    std::string num = std::to_string(step);
+
+    while(num.length() < width) num = "0" + num;
+
+    fs::path p = fs::path(currentSimFolder) / (detectedPrefix + num + ".csv");
+
+    return p.string();
+}
+
 
 void parseCSV(const std::string& filename){
     cells.clear();
@@ -67,23 +91,19 @@ void parseCSV(const std::string& filename){
     selectedCellIndex = -1; 
 
     std::ifstream file(filename); 
-    std::string line;
-
     if(!file.is_open()){
-        std::cerr << "ERRO: Nao foi possivel abrir " << filename << std::endl;
         return;
     }
     
-    std::getline(file, line); 
+    std::string line;
+    std::getline(file, line); // Pula cabeçalho
+
     while (std::getline(file, line)){
         std::stringstream ss(line); 
         std::string value;
         CellData cell;
-
         if(!(std::getline(ss, value, ','))) break;
-
         cell.position.x = std::stof(value);
-
         std::getline(ss, value, ','); cell.position.y = std::stof(value);
         std::getline(ss, value, ','); cell.position.z = std::stof(value);
         std::getline(ss, value, ','); cell.type = value;
@@ -94,9 +114,57 @@ void parseCSV(const std::string& filename){
             activeAgents[cell.type].insert(cell.state);
         }
     }
+
     file.close();
 }
 
+void updateSimulationFolder(std::string path){
+    std::cout << "[DEBUG] Recebi o pedido para abrir: " << path << std::endl;
+
+    fs::path p(path);
+
+    if(!fs::exists(p) || !fs::is_directory(p)){
+        std::cout << "[ERRO] Pasta invalida ou nao existe: " << path << std::endl;
+        return;
+    }
+
+    currentSimFolder = p.string(); 
+    std::cout << "--- PASTA ATUALIZADA PARA: " << currentSimFolder << " ---" << std::endl;
+
+    detectedPrefix = "field_"; 
+    int count = 0;
+    bool foundPrefix = false;
+
+    for (const auto& entry : fs::directory_iterator(p)){
+        if(entry.path().extension() == ".csv"){
+            std::string name = entry.path().filename().string();
+
+            if(name.find("field_") == 0){ detectedPrefix = "field_"; foundPrefix = true; break; }
+            if(name.find("Field_") == 0){ detectedPrefix = "Field_"; foundPrefix = true; break; }
+            if(name.find("data_") == 0){ detectedPrefix = "data_"; foundPrefix = true; break; }
+        }
+    }
+    
+
+    int startCheck = 0;
+    if(!fs::exists(getSimFilename(0)) && fs::exists(getSimFilename(1))) startCheck = 1;
+
+    count = startCheck;
+    while (fs::exists(getSimFilename(count))){
+        count++;
+    }
+
+    maxSimStepsFound = count;
+    
+    if(maxSimStepsFound > startCheck){
+        currentSimStep = startCheck;
+        parseCSV(getSimFilename(currentSimStep));
+
+        std::cout << "[SUCESSO] Carregados " << (maxSimStepsFound - startCheck) << " arquivos." << std::endl;
+    } else {
+        std::cout << "[AVISO] Pasta valida, mas sem arquivos CSV com prefixo '" << detectedPrefix << "'." << std::endl;
+    }
+}
 // Função para salvar PNG
 void saveSnapshot(GLFWwindow* window){
     int width, height;
@@ -260,10 +328,34 @@ int main(){
     Sphere sphere(0.5f, 24, 18, true); 
     setupGridAndAxes();
 
+    std::string pathInicial = fs::current_path().string() + "/data";
+    
+    if(fs::exists(pathInicial)){
+        updateSimulationFolder(pathInicial);
+    } else {
+        updateSimulationFolder(fs::current_path().string());
+    }
+
     while(!glfwWindowShouldClose(window)){
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        if(isPlaying && maxSimStepsFound > 0){
+            timeAccumulator += deltaTime;
+            
+            if(timeAccumulator >= stepDelay){
+                timeAccumulator = 0.0f; 
+                
+                currentSimStep++;
+                
+                if(currentSimStep >= maxSimStepsFound){
+                    currentSimStep = 0;
+                }
+                
+                parseCSV(getSimFilename(currentSimStep));
+            }
+        }
 
         if(!isCameraMode) animationTime += deltaTime;
         processInput(window);
@@ -367,6 +459,13 @@ int main(){
 
         if(ImGui::BeginMainMenuBar()){
             if(ImGui::BeginMenu("Arquivo")){
+                if(ImGui::MenuItem("Abrir Pasta de Simulação...")){
+                    IGFD::FileDialogConfig config;
+                    config.path = ".";
+
+                    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirKey", "Selecione a Pasta da Simulação", nullptr, config);
+                }
+
                 if(ImGui::MenuItem("Snapshot PNG")) requestSnapshot = true;
                 ImGui::EndMenu();
             }
@@ -380,6 +479,30 @@ int main(){
             ImGui::EndMainMenuBar();
         }
 
+        // Lógica de Processamento da Seleção
+        if(ImGuiFileDialog::Instance()->Display("ChooseDirKey")){
+            if(ImGuiFileDialog::Instance()->IsOk()){
+                std::string finalPath = "";
+                
+                std::string currentPath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+
+                if(!filePathName.empty() && fs::is_directory(fs::path(filePathName))){
+                    finalPath = filePathName;
+                } else {
+                    finalPath = currentPath;
+                }
+
+                std::cout << "[DEBUG UI] Caminho bruto da interface: " << finalPath << std::endl;
+
+                if(!finalPath.empty()){
+                    updateSimulationFolder(finalPath);
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
         //  INTERFACE LATERAL ESQUERDA 
         static std::string selectedTypeForPopup = "";
         
@@ -390,12 +513,50 @@ int main(){
             ImGui::Text("Simulacao:");
             ImGui::Separator();
             
-            ImGui::Text("Passo: %d / %d", currentSimStep, MAX_SIM_STEPS - 1);
-            if(ImGui::Button("-", ImVec2(40, 0))){ if(currentSimStep > 0){ currentSimStep--; parseCSV(getSimFilename(currentSimStep)); } }
+            ImGui::Text("Pasta: %s", currentSimFolder.c_str());
+            ImGui::Text("Passo: %d / %d", currentSimStep, (maxSimStepsFound > 0 ? maxSimStepsFound - 1 : 0));
+
+            if(ImGui::Button("-", ImVec2(40, 0))){ 
+                if(currentSimStep > 0){ 
+                    currentSimStep--; 
+
+                    parseCSV(getSimFilename(currentSimStep)); 
+                } 
+            }
+
             ImGui::SameLine();
-            if(ImGui::Button("+", ImVec2(40, 0))){ if(currentSimStep < MAX_SIM_STEPS - 1){ currentSimStep++; parseCSV(getSimFilename(currentSimStep)); } }
+
+            if(ImGui::Button("+", ImVec2(40, 0))){ 
+                if(currentSimStep < maxSimStepsFound - 1){ 
+                    currentSimStep++; 
+
+                    parseCSV(getSimFilename(currentSimStep)); 
+                } 
+            }
+
+            ImGui::Separator();
+
+            ImGui::Text("Animacao:");
+            
+            if(ImGui::Button(isPlaying ? "PAUSAR ||" : "TOCAR >", ImVec2(90, 30))){
+                isPlaying = !isPlaying;
+            }
+            
+            ImGui::SameLine();
+            
+            if(ImGui::Button("REINICIAR |<", ImVec2(100, 30))){
+                isPlaying = false;      // Para a animação
+                currentSimStep = 0;     // Volta para o passo 0
+                parseCSV(getSimFilename(currentSimStep)); // Carrega o arquivo 0
+            }
+            
+            // Slider de Velocidade
+            ImGui::Spacing();
+            ImGui::Text("Velocidade (segundos):");
+            ImGui::SliderFloat("##speed", &stepDelay, 0.05f, 2.0f, "%.2f s");
             
             ImGui::Separator();
+
             ImGui::Text("Agentes:");
             
             for(std::map<std::string, std::set<std::string>>::iterator it = activeAgents.begin(); it != activeAgents.end(); ++it){
@@ -555,7 +716,7 @@ void processInput(GLFWwindow *window){
 
     if(glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS){
         if(!plusPressed){
-            if(currentSimStep < MAX_SIM_STEPS - 1){
+            if(currentSimStep < maxSimStepsFound - 1){
                 currentSimStep++; 
                 parseCSV(getSimFilename(currentSimStep)); 
             }
