@@ -344,7 +344,10 @@ int main(){
     
     Sphere sphere(0.5f, 24, 18, true); 
     setupGridAndAxes();
-      
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     visualCube = new Cube();
 
     std::string pathInicial = fs::current_path().string() + "/data";
@@ -424,6 +427,7 @@ int main(){
         //  RENDERIZAÇÃO 3D 
         glViewport((int)UI_PANEL_WIDTH + 15, 0, sw - (int)UI_PANEL_WIDTH - 15, sh);
         cellShader.use();
+        cellShader.setFloat("alpha", 1.0f);
         cellShader.setVec3("viewPos", camera.Position); 
         cellShader.setFloat("shininess", 32.0f); 
         
@@ -475,9 +479,19 @@ int main(){
             sphere.draw();
         }
 
-        // Teste: Um cubo azul semitransparente no centro (0,0,0)
-        // Dimensões: 10 de comprimento, 5 de largura, 2 de altura
-        renderCube(cellShader, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), 0.5f, 10.0f, 5.0f, 2.0f);
+        glDepthMask(GL_FALSE);
+
+        // Teste: Um cubo vermelho translúcido         
+        // Posição: x=10, y=5, z=10
+        glm::vec3 posicaoCubo = glm::vec3(10.0f, 5.0f, 10.0f);
+
+        // Cor: Vermelho (R=1, G=0, B=0)
+        glm::vec3 corCubo = glm::vec3(1.0f, 0.0f, 0.0f);
+
+        // renderCube(shader, pos, cor, ALPHA, comprimento(X), largura(Y), altura(Z))
+        renderCube(cellShader, posicaoCubo, corCubo, 0.3f, 8.0f, 8.0f, 8.0f);
+
+        glDepthMask(GL_TRUE);
 
         glViewport(0, 0, sw, sh);
 
