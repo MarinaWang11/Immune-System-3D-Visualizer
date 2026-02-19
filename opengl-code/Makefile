@@ -6,6 +6,7 @@ IMGUI_DIR = lib/imgui
 SOURCES = src/main.cpp \
           src/glad.cpp \
           include/Sphere.cpp \
+          include/Cube.cpp \
           $(IMGUI_DIR)/ImGuiFileDialog.cpp \
           $(IMGUI_DIR)/imgui.cpp \
           $(IMGUI_DIR)/imgui_demo.cpp \
@@ -39,6 +40,9 @@ main.o glad.o: %.o: src/%.cpp
 
 # Regra para include
 Sphere.o: %.o: include/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+Cube.o: include/Cube.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # Regra para ImGuiFileDialog 

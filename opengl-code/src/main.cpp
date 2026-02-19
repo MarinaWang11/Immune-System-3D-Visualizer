@@ -33,6 +33,7 @@ namespace fs = std::filesystem;
 #include "../include/shader.h" 
 #include "../include/camera.h"
 #include "../include/Sphere.h"
+#include "../include/Cube.h"
 #include "../include/Colors.h" 
 
 struct CellData{
@@ -63,6 +64,8 @@ int maxSimStepsFound = 0;
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
 
+Cube* visualCube = nullptr;
+
 std::map<std::string, std::set<std::string>> activeAgents;
 std::vector<CellData> cells;
 
@@ -77,7 +80,7 @@ std::string getSimFilename(int step){
 std::string getSimFilenamePadded(int step, int width){
     std::string num = std::to_string(step);
 
-    while(num.length() < width) num = "0" + num;
+    while(num.length() < (size_t)width) num = "0" + num;
 
     fs::path p = fs::path(currentSimFolder) / (detectedPrefix + num + ".csv");
 
@@ -133,15 +136,14 @@ void updateSimulationFolder(std::string path){
 
     detectedPrefix = "field_"; 
     int count = 0;
-    bool foundPrefix = false;
-
+    
     for (const auto& entry : fs::directory_iterator(p)){
         if(entry.path().extension() == ".csv"){
             std::string name = entry.path().filename().string();
 
-            if(name.find("field_") == 0){ detectedPrefix = "field_"; foundPrefix = true; break; }
-            if(name.find("Field_") == 0){ detectedPrefix = "Field_"; foundPrefix = true; break; }
-            if(name.find("data_") == 0){ detectedPrefix = "data_"; foundPrefix = true; break; }
+            if(name.find("field_") == 0){ detectedPrefix = "field_"; break; }
+            if(name.find("Field_") == 0){ detectedPrefix = "Field_"; break; }
+            if(name.find("data_") == 0){ detectedPrefix = "data_"; break; }
         }
     }
     
@@ -242,6 +244,20 @@ glm::vec3 getRayFromMouse(float mouseX, float mouseY, int screenW, int screenH, 
     return glm::normalize(ray_wor);
 }
 
+void renderCube(Shader &shader, glm::vec3 pos, glm::vec3 color, float alpha, float length, float width, float height) {
+    shader.use();
+    
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+    model = glm::scale(model, glm::vec3(length, height, width)); 
+    
+    shader.setMat4("model", model);
+    shader.setVec3("objectColor", color);
+    shader.setFloat("alpha", alpha); 
+    
+    visualCube->draw();
+}
+
 unsigned int gridVAO, gridVBO;
 int gridVertexCount = 0;
 
@@ -310,8 +326,9 @@ int main(){
     glfwSetScrollCallback(window, scrollCallback);
 
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
-
+  
     IMGUI_CHECKVERSION();
+    
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsLight();
@@ -327,6 +344,8 @@ int main(){
     
     Sphere sphere(0.5f, 24, 18, true); 
     setupGridAndAxes();
+      
+    visualCube = new Cube();
 
     std::string pathInicial = fs::current_path().string() + "/data";
     
@@ -441,6 +460,7 @@ int main(){
             cellShader.setVec3("dirLight.ambient", light.ambient); cellShader.setVec3("dirLight.diffuse", light.diffuse); 
         }
 
+
         for(size_t i = 0; i < cells.size(); ++i){
             glm::vec3 color = getCellColor(cells[i].type, cells[i].state);
             if((int)i == selectedCellIndex) color = glm::vec3(1.0f, 1.0f, 0.0f); 
@@ -454,6 +474,10 @@ int main(){
             cellShader.setMat4("model", m); 
             sphere.draw();
         }
+
+        // Teste: Um cubo azul semitransparente no centro (0,0,0)
+        // Dimensões: 10 de comprimento, 5 de largura, 2 de altura
+        renderCube(cellShader, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), 0.5f, 10.0f, 5.0f, 2.0f);
 
         glViewport(0, 0, sw, sh);
 
