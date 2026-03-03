@@ -7,6 +7,7 @@ SOURCES = src/main.cpp \
           src/glad.cpp \
           include/Sphere.cpp \
           include/Cube.cpp \
+          include/Cylinder.cpp \
           $(IMGUI_DIR)/ImGuiFileDialog.cpp \
           $(IMGUI_DIR)/imgui.cpp \
           $(IMGUI_DIR)/imgui_demo.cpp \
@@ -43,6 +44,9 @@ Sphere.o: %.o: include/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 Cube.o: include/Cube.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+Cylinder.o: include/Cylinder.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # Regra para ImGuiFileDialog 

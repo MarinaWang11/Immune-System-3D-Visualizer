@@ -34,6 +34,7 @@ namespace fs = std::filesystem;
 #include "../include/camera.h"
 #include "../include/Sphere.h"
 #include "../include/Cube.h"
+#include "../include/Cylinder.h"
 #include "../include/Colors.h" 
 
 struct CellData{
@@ -65,6 +66,7 @@ const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
 
 Cube* visualCube = nullptr;
+Cylinder* visualCylinder = nullptr;
 
 std::map<std::string, std::set<std::string>> activeAgents;
 std::vector<CellData> cells;
@@ -258,6 +260,22 @@ void renderCube(Shader &shader, glm::vec3 pos, glm::vec3 color, float alpha, flo
     visualCube->draw();
 }
 
+void renderCylinder(Shader &shader, glm::vec3 pos, glm::vec3 color, float alpha, float radius, float height) {
+    if (visualCylinder == nullptr) return;
+
+    shader.use();
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+    
+    model = glm::scale(model, glm::vec3(radius * 2.0f, height, radius * 2.0f)); 
+    
+    shader.setMat4("model", model);
+    shader.setVec3("objectColor", color);
+    shader.setFloat("alpha", alpha); 
+    
+    visualCylinder->draw();
+}
+
 unsigned int gridVAO, gridVBO;
 int gridVertexCount = 0;
 
@@ -349,7 +367,10 @@ int main(){
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     visualCube = new Cube();
-
+    visualCylinder = new Cylinder(36);
+    if (visualCylinder != nullptr) {
+        std::cout << "Cilindro inicializado com sucesso!" << std::endl;
+    }
     std::string pathInicial = fs::current_path().string() + "/data";
     
     if(fs::exists(pathInicial)){
@@ -489,7 +510,10 @@ int main(){
         glm::vec3 corCubo = glm::vec3(1.0f, 0.0f, 0.0f);
 
         // renderCube(shader, pos, cor, ALPHA, comprimento(X), largura(Y), altura(Z))
-        renderCube(cellShader, posicaoCubo, corCubo, 0.3f, 8.0f, 8.0f, 8.0f);
+        // renderCube(cellShader, posicaoCubo, corCubo, 0.3f, 8.0f, 8.0f, 8.0f);
+
+        //renderCylinder(shader, pos, cor, ALPHA, raio, altura)
+        renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
 
         glDepthMask(GL_TRUE);
 
