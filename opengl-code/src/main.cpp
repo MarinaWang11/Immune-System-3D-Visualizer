@@ -448,7 +448,7 @@ int main(){
         //  RENDERIZAÇÃO 3D 
         glViewport((int)UI_PANEL_WIDTH + 15, 0, sw - (int)UI_PANEL_WIDTH - 15, sh);
         cellShader.use();
-        cellShader.setFloat("alpha", 1.0f);
+        cellShader.setFloat("alpha", 0.9f);
         cellShader.setVec3("viewPos", camera.Position); 
         cellShader.setFloat("shininess", 32.0f); 
         
@@ -513,7 +513,7 @@ int main(){
         // renderCube(cellShader, posicaoCubo, corCubo, 0.3f, 8.0f, 8.0f, 8.0f);
 
         //renderCylinder(shader, pos, cor, ALPHA, raio, altura)
-        renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
+        //renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
 
         glDepthMask(GL_TRUE);
 
