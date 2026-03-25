@@ -9,6 +9,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <ImGuiFileDialog.h>
+#include <sys/types.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h> 
@@ -59,8 +60,9 @@ bool showDataTable = true;
 bool isPlaying = false;          // Estado: Toca ou Pausa
 float timeAccumulator = 0.0f;    // Acumula o tempo passado
 float stepDelay = 0.2f;          // Tempo entre passos (0.2s = 5 passos por segundo)
-int currentSimStep = 0;
-int maxSimStepsFound = 0; 
+float currentSimStep = 0;
+float maxSimStepsFound = 0; 
+const float DT = 0.5;
 
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
@@ -73,13 +75,13 @@ std::vector<CellData> cells;
 
 
 
-std::string getSimFilename(int step){
+std::string getSimFilename(float step){
     fs::path p = fs::path(currentSimFolder) / (detectedPrefix + std::to_string(step) + ".csv");
     
     return p.string();
 }
 
-std::string getSimFilenamePadded(int step, int width){
+std::string getSimFilenamePadded(float step, int width){
     std::string num = std::to_string(step);
 
     while(num.length() < (size_t)width) num = "0" + num;
@@ -137,7 +139,7 @@ void updateSimulationFolder(std::string path){
     std::cout << "--- PASTA ATUALIZADA PARA: " << currentSimFolder << " ---" << std::endl;
 
     detectedPrefix = "field_"; 
-    int count = 0;
+    float count = 0;
     
     for (const auto& entry : fs::directory_iterator(p)){
         if(entry.path().extension() == ".csv"){
@@ -150,12 +152,12 @@ void updateSimulationFolder(std::string path){
     }
     
 
-    int startCheck = 0;
-    if(!fs::exists(getSimFilename(0)) && fs::exists(getSimFilename(1))) startCheck = 1;
+    float startCheck = 0;
+    if(!fs::exists(getSimFilename(0)) && fs::exists(getSimFilename(DT))) startCheck = DT;
 
     count = startCheck;
     while (fs::exists(getSimFilename(count))){
-        count++;
+        count += DT;
     }
 
     maxSimStepsFound = count;
@@ -390,7 +392,7 @@ int main(){
             if(timeAccumulator >= stepDelay){
                 timeAccumulator = 0.0f; 
                 
-                currentSimStep++;
+                currentSimStep += DT;
                 
                 if(currentSimStep >= maxSimStepsFound){
                     currentSimStep = 0;
@@ -576,11 +578,11 @@ int main(){
             ImGui::Separator();
             
             ImGui::Text("Pasta: %s", currentSimFolder.c_str());
-            ImGui::Text("Passo: %d / %d", currentSimStep, (maxSimStepsFound > 0 ? maxSimStepsFound - 1 : 0));
+            ImGui::Text("Passo: %f / %f", currentSimStep, (maxSimStepsFound > 0 ? maxSimStepsFound - 1 : 0));
 
             if(ImGui::Button("-", ImVec2(40, 0))){ 
-                if(currentSimStep > 0){ 
-                    currentSimStep--; 
+                if(currentSimStep > 0.0){ 
+                    currentSimStep -= DT; 
 
                     parseCSV(getSimFilename(currentSimStep)); 
                 } 
@@ -590,7 +592,7 @@ int main(){
 
             if(ImGui::Button("+", ImVec2(40, 0))){ 
                 if(currentSimStep < maxSimStepsFound - 1){ 
-                    currentSimStep++; 
+                    currentSimStep += DT; 
 
                     parseCSV(getSimFilename(currentSimStep)); 
                 } 
@@ -778,8 +780,8 @@ void processInput(GLFWwindow *window){
 
     if(glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS){
         if(!plusPressed){
-            if(currentSimStep < maxSimStepsFound - 1){
-                currentSimStep++; 
+            if(currentSimStep < maxSimStepsFound - DT){
+                currentSimStep += DT; 
                 parseCSV(getSimFilename(currentSimStep)); 
             }
 
@@ -792,7 +794,7 @@ void processInput(GLFWwindow *window){
 
     if(glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS){
         if(!minusPressed){
-            if(currentSimStep > 0){ currentSimStep--; 
+            if(currentSimStep > 0.0){ currentSimStep -= DT; 
                 parseCSV(getSimFilename(currentSimStep)); 
             }
 

@@ -68,11 +68,11 @@ inline glm::vec3 getCellColor(const std::string& type, const std::string& state)
 
     if (type == "Cell" && state == "Healthy")
         return glm::vec3(1.0f, 0.2f, 0.3f);  //vermelha
-    else if (type == "Cell" && state == "Mutant")
+    else if (type == "Cell" && state == "Proliferating")
         return glm::vec3(0.f, 0.9f, 0.3f); // green
-    else if (type == "Cell" && state == "Dead")
-        return glm::vec3(0.2f, 0.2f, 0.2f); // black 
     else if (type == "Cell" && state == "Necrotic")
+        return glm::vec3(0.2f, 0.2f, 0.2f); // black 
+    else if (type == "Cell" && state == "Hypoxic")
         return glm::vec3(0.77, 0.64, 0.52); //light brown 
     else if (type == "Nutrient")
         return glm::vec3(0.9f, 0.9f, 0.0f);        
