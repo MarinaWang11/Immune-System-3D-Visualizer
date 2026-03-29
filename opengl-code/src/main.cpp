@@ -44,7 +44,19 @@ struct CellData{
     std::string state;  
 };
 
+struct SimFile {
+    std::string path;
+    float timeValue; // Num do arquivo 
+    
+    // Ordenar os arquivos do menor tempo para o maior
+    bool operator<(const SimFile& other) const {
+        return timeValue < other.timeValue;
+    }
+};
+
+
 // VARIÁVEIS GLOBAIS 
+std::vector<SimFile> simulationFiles; //Lista de arquivos 
 std::string currentSimFolder = "data";
 std::string detectedPrefix = "field_"; // Valor padrão inicial
 int selectedCellIndex = -1; 
@@ -62,7 +74,6 @@ float timeAccumulator = 0.0f;    // Acumula o tempo passado
 float stepDelay = 0.2f;          // Tempo entre passos (0.2s = 5 passos por segundo)
 float currentSimStep = 0;
 float maxSimStepsFound = 0; 
-const float DT = 0.5;
 
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
@@ -73,23 +84,6 @@ Cylinder* visualCylinder = nullptr;
 std::map<std::string, std::set<std::string>> activeAgents;
 std::vector<CellData> cells;
 
-
-
-std::string getSimFilename(float step){
-    fs::path p = fs::path(currentSimFolder) / (detectedPrefix + std::to_string(step) + ".csv");
-    
-    return p.string();
-}
-
-std::string getSimFilenamePadded(float step, int width){
-    std::string num = std::to_string(step);
-
-    while(num.length() < (size_t)width) num = "0" + num;
-
-    fs::path p = fs::path(currentSimFolder) / (detectedPrefix + num + ".csv");
-
-    return p.string();
-}
 
 
 void parseCSV(const std::string& filename){
@@ -127,7 +121,6 @@ void parseCSV(const std::string& filename){
 
 void updateSimulationFolder(std::string path){
     std::cout << "[DEBUG] Recebi o pedido para abrir: " << path << std::endl;
-
     fs::path p(path);
 
     if(!fs::exists(p) || !fs::is_directory(p)){
@@ -136,41 +129,56 @@ void updateSimulationFolder(std::string path){
     }
 
     currentSimFolder = p.string(); 
-    std::cout << "--- PASTA ATUALIZADA PARA: " << currentSimFolder << " ---" << std::endl;
-
-    detectedPrefix = "field_"; 
-    float count = 0;
+    simulationFiles.clear(); // Limpa a lista antiga
     
+    
+    detectedPrefix = "field_"; 
+
     for (const auto& entry : fs::directory_iterator(p)){
         if(entry.path().extension() == ".csv"){
             std::string name = entry.path().filename().string();
-
             if(name.find("field_") == 0){ detectedPrefix = "field_"; break; }
             if(name.find("Field_") == 0){ detectedPrefix = "Field_"; break; }
             if(name.find("data_") == 0){ detectedPrefix = "data_"; break; }
         }
     }
     
+    // lê  arquivos, extrai o num e guarda na lista
+    for (const auto& entry : fs::directory_iterator(p)){
+        if(entry.path().extension() == ".csv"){
+            std::string name = entry.path().filename().string();
+            
+            if(name.find(detectedPrefix) == 0) {
+                std::string numStr = name.substr(detectedPrefix.length());
+                numStr = numStr.substr(0, numStr.find(".csv"));
+                
+                try {
+                    float timeVal = std::stof(numStr); // Converte "0.5" para float
 
-    float startCheck = 0;
-    if(!fs::exists(getSimFilename(0)) && fs::exists(getSimFilename(DT))) startCheck = DT;
-
-    count = startCheck;
-    while (fs::exists(getSimFilename(count))){
-        count += DT;
+                    simulationFiles.push_back({entry.path().string(), timeVal});
+                } catch (...) {
+                    // Ignora arquivos que não tenham um número válido no nome
+                }
+            }
+        }
     }
 
-    maxSimStepsFound = count;
-    
-    if(maxSimStepsFound > startCheck){
-        currentSimStep = startCheck;
-        parseCSV(getSimFilename(currentSimStep));
+    // Ordena os arquivos 
+    std::sort(simulationFiles.begin(), simulationFiles.end());
 
-        std::cout << "[SUCESSO] Carregados " << (maxSimStepsFound - startCheck) << " arquivos." << std::endl;
+    maxSimStepsFound = simulationFiles.size();
+    
+    //Carrega o primeiro arquivo
+    if(maxSimStepsFound > 0){
+        currentSimStep = 0; // ID da lista
+        parseCSV(simulationFiles[currentSimStep].path);
+
+        std::cout << "[SUCESSO] Carregados " << maxSimStepsFound << " arquivos." << std::endl;
     } else {
-        std::cout << "[AVISO] Pasta valida, mas sem arquivos CSV com prefixo '" << detectedPrefix << "'." << std::endl;
+        std::cout << "[AVISO] Pasta valida, mas sem arquivos CSV compativeis." << std::endl;
     }
 }
+
 // Função para salvar PNG
 void saveSnapshot(GLFWwindow* window){
     int width, height;
@@ -360,7 +368,6 @@ int main(){
     glEnable(GL_DEPTH_TEST); 
     Shader cellShader("./shaders/planet.vs", "./shaders/planet.fs"); 
     
-    parseCSV(getSimFilename(currentSimStep));
     
     Sphere sphere(0.5f, 24, 18, true); 
     setupGridAndAxes();
@@ -392,13 +399,13 @@ int main(){
             if(timeAccumulator >= stepDelay){
                 timeAccumulator = 0.0f; 
                 
-                currentSimStep += DT;
+                currentSimStep ++;
                 
                 if(currentSimStep >= maxSimStepsFound){
                     currentSimStep = 0;
                 }
                 
-                parseCSV(getSimFilename(currentSimStep));
+                parseCSV(simulationFiles[currentSimStep].path);
             }
         }
 
@@ -578,13 +585,17 @@ int main(){
             ImGui::Separator();
             
             ImGui::Text("Pasta: %s", currentSimFolder.c_str());
-            ImGui::Text("Passo: %f / %f", currentSimStep, (maxSimStepsFound > 0 ? maxSimStepsFound - 1 : 0));
+            if(maxSimStepsFound > 0) {              
+                ImGui::Text("Tempo da Simulacao: %.2f / %.2f", simulationFiles[currentSimStep].timeValue, simulationFiles[maxSimStepsFound - 1].timeValue);
+            } else {
+                ImGui::Text("Nenhum arquivo compativel carregado.");
+            }
 
             if(ImGui::Button("-", ImVec2(40, 0))){ 
-                if(currentSimStep > 0.0){ 
-                    currentSimStep -= DT; 
+                if(currentSimStep > 0){ 
+                    currentSimStep--; 
 
-                    parseCSV(getSimFilename(currentSimStep)); 
+                    parseCSV(simulationFiles[currentSimStep].path); 
                 } 
             }
 
@@ -592,9 +603,9 @@ int main(){
 
             if(ImGui::Button("+", ImVec2(40, 0))){ 
                 if(currentSimStep < maxSimStepsFound - 1){ 
-                    currentSimStep += DT; 
+                    currentSimStep++; 
 
-                    parseCSV(getSimFilename(currentSimStep)); 
+                    parseCSV(simulationFiles[currentSimStep].path); 
                 } 
             }
 
@@ -611,7 +622,7 @@ int main(){
             if(ImGui::Button("REINICIAR |<", ImVec2(100, 30))){
                 isPlaying = false;      // Para a animação
                 currentSimStep = 0;     // Volta para o passo 0
-                parseCSV(getSimFilename(currentSimStep)); // Carrega o arquivo 0
+                parseCSV(simulationFiles[currentSimStep].path); // Carrega o arquivo 0
             }
             
             // Slider de Velocidade
@@ -780,9 +791,9 @@ void processInput(GLFWwindow *window){
 
     if(glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS){
         if(!plusPressed){
-            if(currentSimStep < maxSimStepsFound - DT){
-                currentSimStep += DT; 
-                parseCSV(getSimFilename(currentSimStep)); 
+            if(currentSimStep < maxSimStepsFound - 1){
+                currentSimStep ++; 
+                parseCSV(simulationFiles[currentSimStep].path); 
             }
 
             plusPressed = true;
@@ -794,8 +805,8 @@ void processInput(GLFWwindow *window){
 
     if(glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS){
         if(!minusPressed){
-            if(currentSimStep > 0.0){ currentSimStep -= DT; 
-                parseCSV(getSimFilename(currentSimStep)); 
+            if(currentSimStep > 0){ currentSimStep --; 
+                parseCSV(simulationFiles[currentSimStep].path); 
             }
 
             minusPressed = true;

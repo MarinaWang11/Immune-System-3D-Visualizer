@@ -1,6 +1,9 @@
 x,y,z,type,state
-2.8585787,2.8585787,0,Neutrophil,Activated
-2.5,2.5,0,Bacteria,Live
-8,8,0,Bacteria,Live
-7.39334,8.388054,0,Bacteria,Live
-8.192888,7.7290454,0,Bacteria,Live
+4.826011,5.522729,5.483102,Cell,Healthy
+4.262932,4.3606215,4.797883,Cell,Healthy
+5.45355,4.083592,4.636929,Cell,Healthy
+4.954923,4.7043242,5.527615,Cell,Healthy
+4.786046,4.9610143,4.66659,Cell,Healthy
+5.9142623,4.609437,4.060777,Cell,Healthy
+5,5,5,Cell,Proliferating
+9,9,9,Cell,Proliferating
