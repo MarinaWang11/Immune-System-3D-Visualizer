@@ -76,4 +76,4 @@ pos_x, pos_y, pos_z, agent_type, agent_state
 
 ---
 
-**Authors:** Marina Rihs Matos Wang and Alexandre Bittencourt Pigozzo   
+**Authors:** [Marina Rihs Matos Wang](https://github.com/MarinaWang11) and [Alexandre Bittencourt Pigozzo](https://github.com/alexbprr)  
