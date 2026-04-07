@@ -120,11 +120,11 @@ void parseCSV(const std::string& filename){
 }
 
 void updateSimulationFolder(std::string path){
-    std::cout << "[DEBUG] Recebi o pedido para abrir: " << path << std::endl;
+    std::cout << "[DEBUG] Recieved a request to open: " << path << std::endl;
     fs::path p(path);
 
     if(!fs::exists(p) || !fs::is_directory(p)){
-        std::cout << "[ERRO] Pasta invalida ou nao existe: " << path << std::endl;
+        std::cout << "[ERROR] Invalid folder or does not exist: " << path << std::endl;
         return;
     }
 
@@ -173,9 +173,9 @@ void updateSimulationFolder(std::string path){
         currentSimStep = 0; // ID da lista
         parseCSV(simulationFiles[currentSimStep].path);
 
-        std::cout << "[SUCESSO] Carregados " << maxSimStepsFound << " arquivos." << std::endl;
+        std::cout << "[SUCCESS] Loaded " << maxSimStepsFound << " files." << std::endl;
     } else {
-        std::cout << "[AVISO] Pasta valida, mas sem arquivos CSV compativeis." << std::endl;
+        std::cout << "[WARNING] Valid folder, but no compatible CSV files found." << std::endl;
     }
 }
 
@@ -203,7 +203,7 @@ void saveSnapshot(GLFWwindow* window){
     std::string filename = "print/snapshot_" + std::to_string(now) + ".png";
 
     if(stbi_write_png(filename.c_str(), width, height, nrChannels, buffer.data(), stride)){
-        std::cout << "Snapshot salvo: " << filename << std::endl;
+        std::cout << "Snapshot saved: " << filename << std::endl;
     }
 }
 
@@ -342,7 +342,7 @@ int main(){
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Visualizador Celular 3D - Linha do Tempo", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Immune System 3D Visualizer", NULL, NULL);
 
     if(!window){ 
         glfwTerminate(); 
@@ -376,10 +376,15 @@ int main(){
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     visualCube = new Cube();
+     if (visualCube != nullptr) {
+        std::cout << "Cube successfully initialized!" << std::endl;
+    }
+
     visualCylinder = new Cylinder(36);
     if (visualCylinder != nullptr) {
-        std::cout << "Cilindro inicializado com sucesso!" << std::endl;
+        std::cout << "Cylinder successfully initialized!" << std::endl;
     }
+
     std::string pathInicial = fs::current_path().string() + "/data";
     
     if(fs::exists(pathInicial)){
@@ -513,13 +518,13 @@ int main(){
 
         // Teste: Um cubo vermelho translúcido         
         // Posição: x=10, y=5, z=10
-        glm::vec3 posicaoCubo = glm::vec3(10.0f, 5.0f, 10.0f);
+        glm::vec3 cubePosition = glm::vec3(10.0f, 5.0f, 10.0f);
 
         // Cor: Vermelho (R=1, G=0, B=0)
-        glm::vec3 corCubo = glm::vec3(1.0f, 0.0f, 0.0f);
+        glm::vec3 cubeColor = glm::vec3(1.0f, 0.0f, 0.0f);
 
         // renderCube(shader, pos, cor, ALPHA, comprimento(X), largura(Y), altura(Z))
-        // renderCube(cellShader, posicaoCubo, corCubo, 0.3f, 8.0f, 8.0f, 8.0f);
+        // renderCube(cellShader, cubePosition, cubeColor, 0.3f, 8.0f, 8.0f, 8.0f);
 
         //renderCylinder(shader, pos, cor, ALPHA, raio, altura)
         //renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
@@ -529,21 +534,21 @@ int main(){
         glViewport(0, 0, sw, sh);
 
         if(ImGui::BeginMainMenuBar()){
-            if(ImGui::BeginMenu("Arquivo")){
-                if(ImGui::MenuItem("Abrir Pasta de Simulação...")){
+            if(ImGui::BeginMenu("Archive")){
+                if(ImGui::MenuItem("Open Simulation Folder...")){
                     IGFD::FileDialogConfig config;
                     config.path = ".";
 
-                    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirKey", "Selecione a Pasta da Simulação", nullptr, config);
+                    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirKey", "Select Simulation Folder", nullptr, config);
                 }
 
                 if(ImGui::MenuItem("Snapshot PNG")) requestSnapshot = true;
                 ImGui::EndMenu();
             }
 
-            if(ImGui::BeginMenu("Visualizar")){
-                ImGui::MenuItem("Grade", NULL, &showGrid);
-                ImGui::MenuItem("Tabela", NULL, &showDataTable);
+            if(ImGui::BeginMenu("Visualization")){
+                ImGui::MenuItem("Grid", NULL, &showGrid);
+                ImGui::MenuItem("Data Table", NULL, &showDataTable);
                 ImGui::EndMenu();
             }
 
@@ -565,7 +570,7 @@ int main(){
                     finalPath = currentPath;
                 }
 
-                std::cout << "[DEBUG UI] Caminho bruto da interface: " << finalPath << std::endl;
+                std::cout << "[DEBUG UI] Raw path from interface: " << finalPath << std::endl;
 
                 if(!finalPath.empty()){
                     updateSimulationFolder(finalPath);
@@ -579,16 +584,16 @@ int main(){
         
         ImGui::SetNextWindowPos(ImVec2(10, 40)); 
         ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, 0));
-        ImGui::Begin("Legenda e Controles", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Legend and Controls", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
             
-            ImGui::Text("Simulacao:");
+            ImGui::Text("Simulation:");
             ImGui::Separator();
             
-            ImGui::Text("Pasta: %s", currentSimFolder.c_str());
+            ImGui::Text("Folder: %s", currentSimFolder.c_str());
             if(maxSimStepsFound > 0) {              
-                ImGui::Text("Tempo da Simulacao: %.2f / %.2f", simulationFiles[currentSimStep].timeValue, simulationFiles[maxSimStepsFound - 1].timeValue);
+                ImGui::Text("Time of Simulation: %.2f / %.2f", simulationFiles[currentSimStep].timeValue, simulationFiles[maxSimStepsFound - 1].timeValue);
             } else {
-                ImGui::Text("Nenhum arquivo compativel carregado.");
+                ImGui::Text("No compatible files loaded.");
             }
 
             if(ImGui::Button("-", ImVec2(40, 0))){ 
@@ -611,15 +616,15 @@ int main(){
 
             ImGui::Separator();
 
-            ImGui::Text("Animacao:");
+            ImGui::Text("Animation:");
             
-            if(ImGui::Button(isPlaying ? "PAUSAR ||" : "TOCAR >", ImVec2(90, 30))){
+            if(ImGui::Button(isPlaying ? "PAUSE ||" : "PLAY >", ImVec2(90, 30))){
                 isPlaying = !isPlaying;
             }
             
             ImGui::SameLine();
             
-            if(ImGui::Button("REINICIAR |<", ImVec2(100, 30))){
+            if(ImGui::Button("RESTART |<", ImVec2(100, 30))){
                 isPlaying = false;      // Para a animação
                 currentSimStep = 0;     // Volta para o passo 0
                 parseCSV(simulationFiles[currentSimStep].path); // Carrega o arquivo 0
@@ -627,12 +632,12 @@ int main(){
             
             // Slider de Velocidade
             ImGui::Spacing();
-            ImGui::Text("Velocidade (segundos):");
+            ImGui::Text("Speed (seconds):");
             ImGui::SliderFloat("##speed", &stepDelay, 0.05f, 2.0f, "%.2f s");
             
             ImGui::Separator();
 
-            ImGui::Text("Agentes:");
+            ImGui::Text("Agents:");
             
             for(std::map<std::string, std::set<std::string>>::iterator it = activeAgents.begin(); it != activeAgents.end(); ++it){
                 const std::string& type = it->first;
@@ -648,13 +653,13 @@ int main(){
             }
             
             ImGui::Separator();
-            ImGui::ColorButton("##sel_main", ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); ImGui::SameLine(); ImGui::Text("Selecionado");
+            ImGui::ColorButton("##sel_main", ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); ImGui::SameLine(); ImGui::Text("Selected");
             
             ImGui::Separator();
-            ImGui::TextDisabled("Atalhos:");
-            ImGui::Text("[O] Orbita | [C] Cam Livre");
-            ImGui::Text("[W,A,S,D] Mover | [Setas] Visao");
-            ImGui::Text("[-][+] Tempo");
+            ImGui::TextDisabled("Shortcuts:");
+            ImGui::Text("[O] Orbit | [C] Free Cam");
+            ImGui::Text("[W,A,S,D] Move | [Arrows] View");
+            ImGui::Text("[-][+] Time");
             
             ImVec2 mainWinPos = ImGui::GetWindowPos(); ImVec2 mainWinSize = ImGui::GetWindowSize();
         ImGui::End();
@@ -665,9 +670,9 @@ int main(){
             ImGui::SetNextWindowPos(ImVec2(mainWinPos.x + mainWinSize.x + 10, mainWinPos.y), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(260, 0), ImGuiCond_Always);
             
-            std::string subTitle = "Estados do Agente##StatesSubWindow";
+            std::string subTitle = "States of the Agent##StatesSubWindow";
             if(ImGui::Begin(subTitle.c_str(), &openStates, ImGuiWindowFlags_AlwaysAutoResize)){
-                ImGui::Text("Tipo: %s", selectedTypeForPopup.c_str());
+                ImGui::Text("Type: %s", selectedTypeForPopup.c_str());
                 ImGui::Separator();
                 
                 std::set<std::string>& states = activeAgents[selectedTypeForPopup];
@@ -735,19 +740,19 @@ int main(){
         ImGui::SetNextWindowPos(ImVec2(10, (float)sh - DETAILS_PANEL_HEIGHT - 10), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, DETAILS_PANEL_HEIGHT));
 
-        if(ImGui::Begin("Detalhes da Celula", &showDetails, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
+        if(ImGui::Begin("Details of the Cell", &showDetails, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
             if(selectedCellIndex != -1 && selectedCellIndex < (int)cells.size()){
                 auto& c = cells[selectedCellIndex];
 
                 ImGui::Text("ID #%d", selectedCellIndex); ImGui::Separator();
-                ImGui::BulletText("Tipo: %s", c.type.c_str());
-                ImGui::BulletText("Estado: %s", c.state.c_str());
-                ImGui::BulletText("Posicao: (%.2f, %.2f, %.2f)", c.position.x, c.position.y, c.position.z);
+                ImGui::BulletText("Type: %s", c.type.c_str());
+                ImGui::BulletText("State: %s", c.state.c_str());
+                ImGui::BulletText("Position: (%.2f, %.2f, %.2f)", c.position.x, c.position.y, c.position.z);
                 ImGui::Spacing();
 
-                if(ImGui::Button("Deselecionar", ImVec2(-FLT_MIN, 0))) selectedCellIndex = -1;
+                if(ImGui::Button("Deselect", ImVec2(-FLT_MIN, 0))) selectedCellIndex = -1;
             } else{
-                ImGui::TextDisabled("Selecione uma esfera ou linha.");
+                ImGui::TextDisabled("Select a sphere or line.");
             }
         }
 
