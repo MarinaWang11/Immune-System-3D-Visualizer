@@ -46,7 +46,7 @@ struct CellData{
 
 struct SimFile {
     std::string path;
-    float timeValue; // Num do arquivo 
+    float timeValue; // File's Num  
     
     // Ordenar os arquivos do menor tempo para o maior
     bool operator<(const SimFile& other) const {
@@ -55,7 +55,7 @@ struct SimFile {
 };
 
 
-// VARIÁVEIS GLOBAIS 
+// GLOBAL VARIABLES 
 std::vector<SimFile> simulationFiles; //Lista de arquivos 
 std::string currentSimFolder = "data";
 std::string detectedPrefix = "field_"; // Valor padrão inicial
@@ -78,6 +78,11 @@ float maxSimStepsFound = 0;
 const float UI_PANEL_WIDTH = 300.0f;
 const float DETAILS_PANEL_HEIGHT = 160.0f;
 
+
+bool enableClipping = false;
+glm::vec3 clipNormal = glm::vec3(1.0f, 0.0f, 0.0f); //Where the cutting planing is pointing at (vertical, horizontal, bent)
+float clipDistance = 0.0f; // Position of cutting plane (right, left, deeper)
+
 Cube* visualCube = nullptr;
 Cylinder* visualCylinder = nullptr;
 
@@ -97,7 +102,7 @@ void parseCSV(const std::string& filename){
     }
     
     std::string line;
-    std::getline(file, line); // Pula cabeçalho
+    std::getline(file, line); // Skips header
 
     while (std::getline(file, line)){
         std::stringstream ss(line); 
@@ -120,7 +125,7 @@ void parseCSV(const std::string& filename){
 }
 
 void updateSimulationFolder(std::string path){
-    std::cout << "[DEBUG] Recieved a request to open: " << path << std::endl;
+    std::cout << "[DEBUG] Received a request to open: " << path << std::endl;
     fs::path p(path);
 
     if(!fs::exists(p) || !fs::is_directory(p)){
@@ -465,7 +470,22 @@ int main(){
         cellShader.setFloat("alpha", 0.9f);
         cellShader.setVec3("viewPos", camera.Position); 
         cellShader.setFloat("shininess", 32.0f); 
+       
+        cellShader.setBool("clipEnabled", enableClipping);
+
+        glm::vec3 shaderClipNormal = clipNormal; 
         
+        //Se o vetor não for zero, normaliza ele 
+        if (glm::length(shaderClipNormal) > 0.001f){
+            shaderClipNormal = glm::normalize(shaderClipNormal);
+        } else {
+            shaderClipNormal = glm::vec3(1.0f, 0.0f, 0.0f); 
+        }
+
+        // normal xyz e a distância w
+        glm::vec4 planeEq = glm::vec4(shaderClipNormal, clipDistance);
+        cellShader.setVec4("clipPlane", planeEq);
+
         SceneLighting light = getGlobalLighting();
         cellShader.setVec3("dirLight.direction", light.direction);
         cellShader.setVec3("dirLight.ambient", light.ambient);   
@@ -485,6 +505,8 @@ int main(){
         glm::mat4 view = camera.GetViewMatrix();
         cellShader.setMat4("projection", proj); cellShader.setMat4("view", view);
 
+        cellShader.setBool("clipEnabled", false);
+
         if(showGrid){
             cellShader.setMat4("model", glm::mat4(1.0f)); glBindVertexArray(gridVAO);
             cellShader.setVec3("dirLight.ambient", 1,1,1); cellShader.setVec3("dirLight.diffuse", 0,0,0);
@@ -499,6 +521,7 @@ int main(){
             cellShader.setVec3("dirLight.ambient", light.ambient); cellShader.setVec3("dirLight.diffuse", light.diffuse); 
         }
 
+        cellShader.setBool("clipEnabled", enableClipping);
 
         for(size_t i = 0; i < cells.size(); ++i){
             glm::vec3 color = getCellColor(cells[i].type, cells[i].state);
@@ -653,6 +676,15 @@ int main(){
             }
             
             ImGui::Separator();
+            ImGui::Text("Clipping");
+            ImGui::Checkbox("Activate", &enableClipping);
+
+            if (enableClipping) {
+                ImGui::InputFloat3("Normal", glm::value_ptr(clipNormal), "%.2f");
+                ImGui::InputFloat("Position", &clipDistance, 1.0f, 5.0f, "%.1f");
+            }
+
+            ImGui::Separator();
             ImGui::ColorButton("##sel_main", ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); ImGui::SameLine(); ImGui::Text("Selected");
             
             ImGui::Separator();
@@ -693,7 +725,7 @@ int main(){
         //  TABELA DE DADOS 
         if(showDataTable){
             float tY = mainWinPos.y + mainWinSize.y + 10;
-            float tH = (float)sh - tY - DETAILS_PANEL_HEIGHT - 30.0f;
+            float tH = (float)sh - tY - 10.0f;
             
             ImGui::SetNextWindowPos(ImVec2(10, tY));
             ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, tH));
@@ -736,12 +768,12 @@ int main(){
         }
 
         //  PAINEL DE DETALHES 
-        bool showDetails = true;
-        ImGui::SetNextWindowPos(ImVec2(10, (float)sh - DETAILS_PANEL_HEIGHT - 10), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(UI_PANEL_WIDTH, DETAILS_PANEL_HEIGHT));
+        if(selectedCellIndex != -1 && selectedCellIndex < (int)cells.size()){
+            bool showDetails = true;
+            ImGui::SetNextWindowPos(ImVec2(UI_PANEL_WIDTH + 20, 40), ImGuiCond_Appearing);
+            ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_Always); // Altura auto-ajustável
 
-        if(ImGui::Begin("Details of the Cell", &showDetails, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
-            if(selectedCellIndex != -1 && selectedCellIndex < (int)cells.size()){
+            if(ImGui::Begin("Details of the Cell", &showDetails, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
                 auto& c = cells[selectedCellIndex];
 
                 ImGui::Text("ID #%d", selectedCellIndex); ImGui::Separator();
@@ -751,14 +783,12 @@ int main(){
                 ImGui::Spacing();
 
                 if(ImGui::Button("Deselect", ImVec2(-FLT_MIN, 0))) selectedCellIndex = -1;
-            } else{
-                ImGui::TextDisabled("Select a sphere or line.");
-            }
+            } 
+            ImGui::End();
+
+            if(!showDetails) selectedCellIndex = -1;
         }
 
-        ImGui::End();
-
-        if(!showDetails) selectedCellIndex = -1;
 
         // Labels de Eixo
         ImDrawList* dl = ImGui::GetBackgroundDrawList();
@@ -789,6 +819,9 @@ int main(){
 }
 
 void processInput(GLFWwindow *window){
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) return;
+
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true); 
     
     static bool plusPressed = false;
