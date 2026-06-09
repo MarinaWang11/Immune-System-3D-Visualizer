@@ -37,6 +37,7 @@ namespace fs = std::filesystem;
 #include "../include/Cube.h"
 #include "../include/Cylinder.h"
 #include "../include/Colors.h" 
+#include "../include/mesh.h"
 
 struct CellData{
     glm::vec3 position; 
@@ -80,11 +81,13 @@ const float DETAILS_PANEL_HEIGHT = 160.0f;
 
 
 bool enableClipping = false;
+bool enableClippingPlane = false;
 glm::vec3 clipNormal = glm::vec3(1.0f, 0.0f, 0.0f); //Where the cutting planing is pointing at (vertical, horizontal, bent)
 float clipDistance = 0.0f; // Position of cutting plane (right, left, deeper)
 
 Cube* visualCube = nullptr;
 Cylinder* visualCylinder = nullptr;
+Mesh* visualPlane = nullptr;
 
 std::map<std::string, std::set<std::string>> activeAgents;
 std::vector<CellData> cells;
@@ -390,6 +393,22 @@ int main(){
         std::cout << "Cylinder successfully initialized!" << std::endl;
     }
 
+    std::vector<Vertex> planeVertices = {
+        //Position, Normal, TexCoords, Tangent, Bitangent
+        {glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f), glm::vec3(0.0f), glm::vec3(0.0f)},
+        {glm::vec3( 1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f), glm::vec3(0.0f), glm::vec3(0.0f)},
+        {glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f), glm::vec3(0.0f), glm::vec3(0.0f)},
+        {glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f), glm::vec3(0.0f), glm::vec3(0.0f)}
+    };
+
+    std::vector<unsigned int> planeIndices = {
+        0, 1, 2, 
+        0, 2, 3  
+    };
+
+    std::vector<Texture> emptyTextures;
+    visualPlane = new Mesh(planeVertices, planeIndices, emptyTextures);
+
     std::string pathInicial = fs::current_path().string() + "/data";
     
     if(fs::exists(pathInicial)){
@@ -470,22 +489,7 @@ int main(){
         cellShader.setFloat("alpha", 0.9f);
         cellShader.setVec3("viewPos", camera.Position); 
         cellShader.setFloat("shininess", 32.0f); 
-       
-        cellShader.setBool("clipEnabled", enableClipping);
-
-        glm::vec3 shaderClipNormal = clipNormal; 
         
-        //Se o vetor não for zero, normaliza ele 
-        if (glm::length(shaderClipNormal) > 0.001f){
-            shaderClipNormal = glm::normalize(shaderClipNormal);
-        } else {
-            shaderClipNormal = glm::vec3(1.0f, 0.0f, 0.0f); 
-        }
-
-        // normal xyz e a distância w
-        glm::vec4 planeEq = glm::vec4(shaderClipNormal, clipDistance);
-        cellShader.setVec4("clipPlane", planeEq);
-
         SceneLighting light = getGlobalLighting();
         cellShader.setVec3("dirLight.direction", light.direction);
         cellShader.setVec3("dirLight.ambient", light.ambient);   
@@ -504,6 +508,18 @@ int main(){
         glm::mat4 proj = glm::perspective(glm::radians(camera.zoom), (float)(sw - UI_PANEL_WIDTH - 15) / (float)sh, 0.1f, 1000.0f);
         glm::mat4 view = camera.GetViewMatrix();
         cellShader.setMat4("projection", proj); cellShader.setMat4("view", view);
+
+        glm::vec3 shaderClipNormal = clipNormal; 
+
+        if (glm::length(shaderClipNormal) > 0.001f){
+            shaderClipNormal = glm::normalize(shaderClipNormal);
+        } else {
+            shaderClipNormal = glm::vec3(1.0f, 0.0f, 0.0f); 
+        }
+
+        // normal xyz and distance w
+        glm::vec4 planeEq = glm::vec4(shaderClipNormal, -clipDistance);
+        cellShader.setVec4("clipPlane", planeEq);
 
         cellShader.setBool("clipEnabled", false);
 
@@ -524,7 +540,8 @@ int main(){
         cellShader.setBool("clipEnabled", enableClipping);
 
         for(size_t i = 0; i < cells.size(); ++i){
-            glm::vec3 color = getCellColor(cells[i].type, cells[i].state);
+            glm::vec3 color = getOrRegisterColor(cells[i].type, cells[i].state); 
+
             if((int)i == selectedCellIndex) color = glm::vec3(1.0f, 1.0f, 0.0f); 
             
             cellShader.setVec3("objectColor", color);
@@ -539,18 +556,48 @@ int main(){
 
         glDepthMask(GL_FALSE);
 
+        /*
         // Teste: Um cubo vermelho translúcido         
         // Posição: x=10, y=5, z=10
         glm::vec3 cubePosition = glm::vec3(10.0f, 5.0f, 10.0f);
 
         // Cor: Vermelho (R=1, G=0, B=0)
-        glm::vec3 cubeColor = glm::vec3(1.0f, 0.0f, 0.0f);
+         glm::vec3 cubeColor = glm::vec3(1.0f, 0.0f, 0.0f);
 
-        // renderCube(shader, pos, cor, ALPHA, comprimento(X), largura(Y), altura(Z))
-        // renderCube(cellShader, cubePosition, cubeColor, 0.3f, 8.0f, 8.0f, 8.0f);
+        renderCube(shader, pos, cor, ALPHA, comprimento(X), largura(Y), altura(Z))
+        renderCube(cellShader, cubePosition, cubeColor, 0.3f, 8.0f, 8.0f, 8.0f);
 
-        //renderCylinder(shader, pos, cor, ALPHA, raio, altura)
-        //renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
+        renderCylinder(shader, pos, cor, ALPHA, raio, altura)
+        renderCylinder(cellShader, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 5.0f, 20.0f);
+        */
+
+        
+        cellShader.setBool("clipEnabled", false); 
+        
+        if(enableClippingPlane && enableClipping && visualPlane != nullptr){
+            glm::vec3 planePos = shaderClipNormal * clipDistance;
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, planePos);
+            
+            glm::vec3 up = glm::vec3(0.0f, 0.0f, 1.0f);
+            float dotProduct = glm::dot(up, shaderClipNormal);
+            
+            if (abs(dotProduct) < 0.999f) {
+                glm::vec3 rotAxis = glm::cross(up, shaderClipNormal);
+                float angle = acos(dotProduct);
+                model = glm::rotate(model, angle, rotAxis);
+            } else if (dotProduct < -0.99f) {
+                model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            }
+
+            model = glm::scale(model, glm::vec3(15.0f, 15.0f, 15.0f)); 
+
+            cellShader.setMat4("model", model);
+            cellShader.setVec3("objectColor", glm::vec3(0.2f, 0.5f, 1.0f)); 
+            cellShader.setFloat("alpha", 0.4f); 
+
+            visualPlane->Draw(cellShader); 
+        }
 
         glDepthMask(GL_TRUE);
 
@@ -664,7 +711,7 @@ int main(){
             
             for(std::map<std::string, std::set<std::string>>::iterator it = activeAgents.begin(); it != activeAgents.end(); ++it){
                 const std::string& type = it->first;
-                glm::vec3 bCol = getCellColor(type, "Live");
+                glm::vec3 bCol = getOrRegisterColor(type, "Live");
                 
                 ImGui::PushID(type.c_str());
                 ImGui::ColorButton("##color", ImVec4(bCol.r, bCol.g, bCol.b, 1.0f));
@@ -679,9 +726,10 @@ int main(){
             ImGui::Text("Clipping");
             ImGui::Checkbox("Activate", &enableClipping);
 
-            if (enableClipping) {
+            if(enableClipping){
                 ImGui::InputFloat3("Normal", glm::value_ptr(clipNormal), "%.2f");
                 ImGui::InputFloat("Position", &clipDistance, 1.0f, 5.0f, "%.1f");
+                ImGui::Checkbox("Clipping Plane", &enableClippingPlane);
             }
 
             ImGui::Separator();
@@ -709,10 +757,12 @@ int main(){
                 
                 std::set<std::string>& states = activeAgents[selectedTypeForPopup];
                 for(std::set<std::string>::iterator sit = states.begin(); sit != states.end(); ++sit){
-                    glm::vec3 sCol = getCellColor(selectedTypeForPopup, *sit);
+                    glm::vec3& sCol = getOrRegisterColor(selectedTypeForPopup, *sit);
 
                     ImGui::PushID(sit->c_str());
-                    ImGui::ColorButton("##s_color", ImVec4(sCol.r, sCol.g, sCol.b, 1.0f));
+                    
+                    ImGui::ColorEdit3("##s_color", glm::value_ptr(sCol), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_PickerHueWheel);
+                    
                     ImGui::SameLine(); 
                     ImGui::Text("%s", sit->c_str());
                     ImGui::PopID();
