@@ -24,7 +24,45 @@ inline SceneLighting getGlobalLighting(){
     return l;
 }
 
-inline glm::vec3 getDefaultCellColor(const std::string& type, const std::string& state){ 
+inline std::string cleanString(std::string str){
+    str.erase(std::remove_if(str.begin(), str.end(), [](unsigned char c){
+        return c == '\r' || c == '\n' || c == '\"' || c == '\'';
+    }), str.end());
+
+    size_t first = str.find_first_not_of(" \t");
+    if (first == std::string::npos) return "";
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
+
+// Converts HSL (H [0,360], S e L [0,1]) to RGB)
+inline glm::vec3 hslToRgb(float h, float s, float l){
+    float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
+    float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
+    float m = l - c / 2.0f;
+
+    float r = 0.0f, g = 0.0f, b = 0.0f;
+    if (h < 60.0f){ r = c; g = x; b = 0; }
+    else if (h < 120.0f){ r = x; g = c; b = 0; }
+    else if (h < 180.0f){ r = 0; g = c; b = x; }
+    else if (h < 240.0f){ r = 0; g = x; b = c; }
+    else if (h < 300.0f){ r = x; g = 0; b = c; }
+    else{ r = c; g = 0; b = x; }
+
+    return glm::vec3(r + m, g + m, b + m);
+}
+
+// Generates a Hue based in Agent's name
+inline float generateAgentHue(const std::string& type){
+    std::hash<std::string> hasher;
+    size_t hashValue = hasher(type);
+    
+    const float goldenAngleConjugate = 0.618033988749895f;
+    float hueFraction = std::fmod((hashValue % 1000) * goldenAngleConjugate, 1.0f);
+    return hueFraction * 360.0f;
+}
+
+/*inline glm::vec3 getDefaultCellColor(const std::string& type, const std::string& state){ 
     glm::vec3 baseColor(0.6f, 0.6f, 0.6f); 
 
     if(type == "Bacteria" || type == "SAureus" || type == "Cell") 
@@ -74,6 +112,44 @@ inline glm::vec3 getDefaultCellColor(const std::string& type, const std::string&
     }
 
     return baseColor;
+}*/
+
+inline glm::vec3 getDefaultCellColor(const std::string& type, const std::string& state){
+    float baseHue = generateAgentHue(type);
+    
+    float s = 0.80f;
+    float l = 0.50f;
+
+    if (state == "Dead" || state == "Necrotic"){
+        // Grafite escuro (Lixo celular)
+        return glm::vec3(0.18f, 0.18f, 0.18f); 
+    } 
+    else if (state == "Apoptotic"){
+        // Tom roxo/cinza pálido e desbotado
+        return hslToRgb(260.0f, 0.15f, 0.35f); 
+    }
+    else if (state == "Inactive"){
+        // Opaco/apagado
+        s = 0.20f;
+        l = 0.35f;
+    }
+    else if (state == "Activated" || state == "Hyperactivated" || state == "Inflammatory" || state == "Proliferating"){
+        // Alta saturação e brilho 
+        s = 2.00f;
+        l = 1.0f;
+    } 
+    else if (state == "Infected"){
+        // Tom "doentio")
+        baseHue = std::fmod(baseHue + 60.0f, 360.0f);
+        s = 0.90f;
+        l = 0.45f;
+    } 
+    else if (state == "Healthy" || state == "Naive"){
+        s = 0.80f;
+        l = 0.50f;
+    }
+
+    return hslToRgb(baseHue, s, l);
 }
 
 inline glm::vec3& getOrRegisterColor(const std::string& type, const std::string& state){

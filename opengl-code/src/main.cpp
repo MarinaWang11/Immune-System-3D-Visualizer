@@ -63,6 +63,10 @@ std::string detectedPrefix = "field_"; // Valor padrão inicial
 int selectedCellIndex = -1; 
 bool mousePressedLastFrame = false; 
 
+std::map<std::string, std::vector<SimFile>> multiFieldFiles; 
+std::vector<std::string> availableFields;                    
+std::string currentVisualizedField = "";
+
 bool isCameraMode = true; 
 float animationTime = 0.0f; 
 bool requestSnapshot = false; 
@@ -138,53 +142,50 @@ void updateSimulationFolder(std::string path){
 
     currentSimFolder = p.string(); 
     simulationFiles.clear(); // Limpa a lista antiga
-    
+    multiFieldFiles.clear();
+    availableFields.clear();
     
     detectedPrefix = "field_"; 
 
     for (const auto& entry : fs::directory_iterator(p)){
         if(entry.path().extension() == ".csv"){
             std::string name = entry.path().filename().string();
-            if(name.find("field_") == 0){ detectedPrefix = "field_"; break; }
-            if(name.find("Field_") == 0){ detectedPrefix = "Field_"; break; }
-            if(name.find("data_") == 0){ detectedPrefix = "data_"; break; }
-        }
-    }
-    
-    // lê  arquivos, extrai o num e guarda na lista
-    for (const auto& entry : fs::directory_iterator(p)){
-        if(entry.path().extension() == ".csv"){
-            std::string name = entry.path().filename().string();
             
-            if(name.find(detectedPrefix) == 0) {
-                std::string numStr = name.substr(detectedPrefix.length());
-                numStr = numStr.substr(0, numStr.find(".csv"));
-                
+            if(name.find(detectedPrefix) == 0){
                 try {
-                    float timeVal = std::stof(numStr); // Converte "0.5" para float
-
-                    simulationFiles.push_back({entry.path().string(), timeVal});
-                } catch (...) {
-                    // Ignora arquivos que não tenham um número válido no nome
-                }
+                    std::string remainder = name.substr(detectedPrefix.length()); // "Lung_1.50.csv"
+                    size_t underscorePos = remainder.find('_');
+                    
+                    if(underscorePos != std::string::npos){
+                        std::string fieldName = remainder.substr(0, underscorePos); // "Lung"
+                        std::string timeStr = remainder.substr(underscorePos + 1);
+                        timeStr = timeStr.substr(0, timeStr.find(".csv"));
+                        
+                        float timeVal = std::stof(timeStr);
+                        multiFieldFiles[fieldName].push_back({entry.path().string(), timeVal});
+                    }
+                } catch (...) {}
             }
         }
     }
 
-    // Ordena os arquivos 
-    std::sort(simulationFiles.begin(), simulationFiles.end());
+    for(auto& kv : multiFieldFiles){
+        std::sort(kv.second.begin(), kv.second.end());
+        availableFields.push_back(kv.first);
+    }
 
-    maxSimStepsFound = simulationFiles.size();
+    std::sort(availableFields.begin(), availableFields.end());
     
-    //Carrega o primeiro arquivo
-    if(maxSimStepsFound > 0){
-        currentSimStep = 0; // ID da lista
+    if(!availableFields.empty()){
+        currentVisualizedField = availableFields[0];
+        simulationFiles = multiFieldFiles[currentVisualizedField];
+        maxSimStepsFound = simulationFiles.size();
+        
+        currentSimStep = 0; 
         parseCSV(simulationFiles[currentSimStep].path);
 
-        std::cout << "[SUCCESS] Loaded " << maxSimStepsFound << " files." << std::endl;
-    } else {
-        std::cout << "[WARNING] Valid folder, but no compatible CSV files found." << std::endl;
-    }
+        std::cout << "[SUCCESS] Loaded " << availableFields.size() << " fields." << std::endl;
+    } 
 }
 
 // Função para salvar PNG
@@ -660,6 +661,29 @@ int main(){
             ImGui::Separator();
             
             ImGui::Text("Folder: %s", currentSimFolder.c_str());
+
+            if(!availableFields.empty()){
+                ImGui::Text("Select Field:");
+                
+                if(ImGui::BeginCombo("##fieldCombo", currentVisualizedField.c_str())){
+                    for(const std::string& fname : availableFields) {
+                        bool is_selected = (currentVisualizedField == fname);
+                        
+                        if(ImGui::Selectable(fname.c_str(), is_selected)){
+                            currentVisualizedField = fname;
+                            simulationFiles = multiFieldFiles[currentVisualizedField];
+                            maxSimStepsFound = simulationFiles.size();
+                            currentSimStep = 0;
+                            parseCSV(simulationFiles[currentSimStep].path);
+                        }
+
+                        if(is_selected) ImGui::SetItemDefaultFocus();
+                    }
+                    
+                    ImGui::EndCombo();
+                }
+            }
+
             if(maxSimStepsFound > 0) {              
                 ImGui::Text("Time of Simulation: %.2f / %.2f", simulationFiles[currentSimStep].timeValue, simulationFiles[maxSimStepsFound - 1].timeValue);
             } else {
